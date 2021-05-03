@@ -1,0 +1,16 @@
+---
+title: "750 Final Project"
+output: html_notebook
+---
+
+```{r}
+MI <- read.csv("data/Myocardial infarction complications Database.csv")
+MI <- MI[,c(2:112, 121)]
+dim(MI)
+
+NApercent <- colSums(is.na(MI)) / nrow(MI)
+selectcol <- NApercent[NApercent < 0.1]
+MI.work <- MI[, names(selectcol)]
+MI.work <- na.omit(MI.work)
+dim(MI.work)
+```
