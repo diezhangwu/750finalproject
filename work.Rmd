@@ -2,15 +2,165 @@
 title: "750 Final Project"
 output: html_notebook
 ---
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+```
+
+
 
 ```{r}
 MI <- read.csv("data/Myocardial infarction complications Database.csv")
 MI <- MI[,c(2:112, 121)]
-dim(MI)
+dim(MI) # 1700, 112
 
+# variables with more than 10% missing values are excluded from the analysis
 NApercent <- colSums(is.na(MI)) / nrow(MI)
 selectcol <- NApercent[NApercent < 0.1]
 MI.work <- MI[, names(selectcol)]
+dim(MI.work) # 1700 95
+
+# dimension of the dataset used in the analysis
 MI.work <- na.omit(MI.work)
-dim(MI.work)
+dim(MI.work) # 1074 95
 ```
+
+### descriptive analysis of demographic information
+```{r}
+mean(MI.work$AGE) # 60.73
+median(MI.work$AGE) # 62
+age.hist <- ggplot(MI.work, aes(MI.work$AGE)) + geom_histogram() + 
+  labs(title = "age distribution", x = "age") + 
+  geom_vline(xintercept = mean(MI.work$AGE), color = "blue") + 
+  geom_vline(xintercept = median(MI.work$AGE), linetype = "dotted") +
+  annotate("text", x = 40, y = 120, label = "mean = 60.73") +
+  annotate("text", x = 40, y = 110, label = "median = 62") 
+
+table(MI.work$SEX)
+sex.plot <- ggplot(MI.work, aes(as.factor(MI.work$SEX))) + geom_bar() + 
+  labs(title = "distribution of sex", x = "sex", y = "") + 
+  scale_x_discrete(labels = c("female", "male")) +
+  annotate("text", x = 1, y = 780, label = "female = 380") +
+  annotate("text", x = 1, y = 720, label = "male = 649") 
+
+grid.arrange(age.hist, sex.plot, nrow = 1)
+```
+
+
+
+### Regular GLM with subset seelction (Alona)
+
+
+
+
+
+
+### Penalized GLM
+Lasso regression
+```{r}
+library(glmnet)
+# select best lambda via LOOCV 
+set.seed(1)
+x <- model.matrix(ZSN ~., MI.work)[, -95]
+y <- MI.work$ZSN
+cv.out.lasso <- cv.glmnet(x, y, alpha = 1, family = "binomial", nfolds = nrow(MI.work))
+plot(cv.out.lasso)
+lambda.best.lasso <- cv.out.lasso$lambda.min
+
+# fit lasso regression on the dataset
+mod.lasso <- glmnet(x, y, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
+mod.lasso$beta
+
+# compute LOOCV test error rate of Lasso regression
+lasso.pred.correct <- rep(0, n = 1:nrow(MI.work))
+for (i in 1:nrow(MI.work)){
+  x.train <- x[-i, ]
+  y.train <- y[-i]
+  x.test <- as.matrix(x[i, ])
+  y.test <- y[i]
+  
+  mod <- glmnet(x.train, y.train, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
+  sum(diag(table(predict(mod, newx = x.train, s =lambda.best.lasso, type = "class"), y.train))) / nrow(x.train)
+
+  lasso.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
+  lasso.pred.correct[i] <- ifelse( lasso.pred == y.test, 1, 0)
+}
+mean(lasso.pred.correct)
+```
+
+Ridge regression
+```{r}
+set.seed(1)
+cv.out.ridge <- cv.glmnet(x, y, alpha = 0, family = "binomial", nfolds = nrow(MI.work))
+plot(cv.out.ridge)
+lambda.best.ridge <- cv.out.ridge$lambda.min
+
+# fit ridge regression on the dataset
+mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binomial")
+mod.ridge$beta
+
+# compute LOOCV test error rate of ridge regression
+ridge.pred.correct <- rep(0, n = 1:nrow(MI.work))
+for (i in 1:nrow(MI.work)){
+  x.train <- x[-i, ]
+  y.train <- y[-i]
+  x.test <- as.matrix(x[i, ])
+  y.test <- y[i]
+  
+  mod <- glmnet(x.train, y.train, alpha = 0, lambda = lambda.best.lasso, family = "binomial")
+  sum(diag(table(predict(mod, newx = x.train, s =lambda.best.lasso, type = "class"), y.train))) / nrow(x.train)
+
+  ridge.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
+  ridge.pred.correct[i] <- ifelse(ridge.pred == y.test, 1, 0)
+}
+mean(ridge.pred.correct)
+```
+
+
+# KNN
+```{r}
+library(class)
+# use LOOCV to determine the best number of K
+x.matrix <- as.matrix(MI.work[, -95])
+k <- c(1:100)
+pred <- rep(0, nrow(MI.work))
+pred.error <- rep(0, length(k))
+
+
+for (j in 1:length(k)){
+        for (i in 1:nrow(MI.work)){
+                # set up training set and testing set
+                train.x <- x.matrix[-i, ]
+                test.x <- x.matrix[i, ]
+                train.ZSN <- MI.work$ZSN[-i]
+                test.ZSN <- MI.work$ZSN[i]
+                
+                set.seed(1)
+                knn.pred <-  knn(train.x, test.x, train.ZSN, k = k[j])
+                pred[i] <- ifelse(knn.pred != test.ZSN, 1, 0)
+        }
+        
+        pred.error[j] <- mean(pred)
+}
+
+which.min(pred.error) #54
+knn.output <- as.data.frame(cbind(pred.error, k))
+ggplot(knn.output, aes(y = pred.error, x = k)) + geom_point() + labs(title = "KNN test error rate by number of k", x = "k", y = "LOOCV test error rate") + geom_vline(xintercept = which.min(pred.error), color = "blue", linetype = "dotted") + geom_vline(xintercept = 41, color = "red", linetype = "dotted") + scale_x_continuous(breaks = c(0, 25, 41, 50, 54, 75, 100)) 
+```
+
+```{r}
+# compute prediction error rate
+pred41 <- knn(MI.work[, -95], MI.work[, -95], MI.work$ZSN, k = 32)
+mean(pred41 != MI.work$ZSN)
+
+pred54 <- knn(MI.work[, -95], MI.work[, -95], MI.work$ZSN, k = 45)
+mean(pred54 != MI.work$ZSN)
+```
+
+
+
+
+
+
+
