@@ -51,10 +51,83 @@ grid.arrange(age.hist, sex.plot, nrow = 1)
 
 ### Regular GLM with subset seelction (Alona)
 
+```{r}
+# subset of predictors at the time of admission
+mi.sub <- select(MI.work, -c(R_AB_1_n, R_AB_2_n, R_AB_3_n, NA_R_1_n, NA_R_2_n, NA_R_3_n, NOT_NA_1_n, NOT_NA_2_n, NOT_NA_3_n))
+dim(mi.sub)
+```
 
 
+```{r}
+#Backward selection - on the entire set.
+glm.fit <-  glm(ZSN ~., data = MI.work, family = "binomial") 
+#glm.fit <-  glm(ZSN ~., data = mi.sub, family = "binomial") 
+best.fit.b <- stepAIC(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)), 
+                      trace =F, direction = "backward")
+best.fit.f <- stepAIC(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)),
+                      trace =F, direction = "forward")
+#length(best.fit.b$coefficients)
+```
 
+```{r}
+# full model
+glm.fit <-  glm(ZSN ~., data = MI.work, family = binomial) 
+pred <- predict(glm.fit, type="response")
+summary(glm.fit)
 
+# null model
+glm.fit.0 <-  glm(ZSN ~1., data = MI.work, family = binomial) 
+summary(glm.fit.0)
+
+```
+
+```{r}
+k=1056
+pred.train=rep(0,k)
+error.test=rep(0,k)
+pred=rep(0,k)
+train.error=rep(0,k)
+pred.test=rep(0,k)
+probs.test=rep(0,k)
+set.seed(1)
+
+# LOOCV for subset of predictors at time of admission.
+for(j in 1:k){
+  glm.fit <-  glm(ZSN ~., data = mi.sub[-j,], family = binomial) 
+  probt <- predict(glm.fit, type="response")
+  predt <- rep(0, 1056)
+  predt[probt>0.5]=1
+  pred.train[j] <- mean(predt == mi.sub[-j,]$ZSN) 
+  probs.test[j] <- predict(glm.fit, newdata = mi.sub[j,], type="response")
+  pred.test[j] <- (probs.test[j]>.5)
+  error.test[j] <- (pred.test[j]!=mi.sub[j,]$ZSN)
+}
+mean(error.test)
+```
+
+```{r ,warning=FALSE}
+k=1056
+pred.train=rep(0,k)
+error.test=rep(0,k)
+pred=rep(0,k)
+train.error=rep(0,k)
+pred.test=rep(0,k)
+probs.test=rep(0,k)
+set.seed(1)
+
+# LOOCV for full model
+for(j in 1:k){
+  glm.fit <-  glm(ZSN ~., data = MI.work[-j,], family = binomial) 
+  probt <- predict(glm.fit, type="response")
+  predt <- rep(0, 1056)
+  predt[probt>0.5]=1
+  pred.train[j] <- mean(predt == MI.work[-j,]$ZSN) 
+  probs.test[j] <- predict(glm.fit, newdata = MI.work[j,], type="response")
+  pred.test[j] <- (probs.test[j]>.5)
+  error.test[j] <- (pred.test[j]!=MI.work[j,]$ZSN)
+}
+mean(error.test)
+```
 
 ### Penalized GLM
 Lasso regression
