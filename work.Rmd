@@ -19,11 +19,11 @@ dim(MI) # 1700, 112
 NApercent <- colSums(is.na(MI)) / nrow(MI)
 selectcol <- NApercent[NApercent < 0.1]
 MI.work <- MI[, names(selectcol)]
-dim(MI.work) # 1700 95
+dim(MI.work) # 1700 112
 
 # dimension of the dataset used in the analysis
 MI.work <- na.omit(MI.work)
-dim(MI.work) # 1074 95
+dim(MI.work) # 652 101
 ```
 
 ### descriptive analysis of demographic information
@@ -52,9 +52,15 @@ grid.arrange(age.hist, sex.plot, nrow = 1)
 ### Regular GLM with subset seelction (Alona)
 
 ```{r}
-# subset of predictors at the time of admission
+# choice model: subset of predictors at the time of admission
 mi.sub <- select(MI.work, -c(R_AB_1_n, R_AB_2_n, R_AB_3_n, NA_R_1_n, NA_R_2_n, NA_R_3_n, NOT_NA_1_n, NOT_NA_2_n, NOT_NA_3_n))
 dim(mi.sub)
+
+#choice model: 743
+choice <- MI.work %>% 
+  select(ZSN, AGE, SEX, IBS_POST, endocr_01, endocr_02, K_SH_POST, ritm_ecg_p_01, 
+         TIME_B_S, L_BLOOD)
+dim(choice)
 ```
 
 
@@ -69,6 +75,7 @@ best.fit.f <- stepAIC(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit))
 #length(best.fit.b$coefficients)
 ```
 
+
 ```{r}
 # full model
 glm.fit <-  glm(ZSN ~., data = MI.work, family = binomial) 
@@ -81,8 +88,33 @@ summary(glm.fit.0)
 
 ```
 
-```{r}
-k=1056
+```{r warning=FALSE}
+k=nrow(choice)
+pred.train=rep(0,k)
+error.test=rep(0,k)
+pred=rep(0,k)
+train.error=rep(0,k)
+pred.test=rep(0,k)
+probs.test=rep(0,k)
+set.seed(1)
+
+# LOOCV for subset choice model.
+for(j in 1:k){
+  glm.fit <-  glm(ZSN ~., data =choice[-j,], family = binomial) 
+  probt <- predict(glm.fit, type="response")
+  predt <- rep(0,k)
+  predt[probt>0.5]=1
+  pred.train[j] <- mean(predt == choice[-j,]$ZSN) 
+  probs.test[j] <- predict(glm.fit, newdata = choice[j,], type="response")
+  pred.test[j] <- (probs.test[j]>.5)
+  error.test[j] <- (pred.test[j]!=choice[j,]$ZSN)
+}
+mean(error.test)
+```
+
+
+```{r warning=FALSE}
+k=nrow(mi.sub)
 pred.train=rep(0,k)
 error.test=rep(0,k)
 pred=rep(0,k)
@@ -95,7 +127,7 @@ set.seed(1)
 for(j in 1:k){
   glm.fit <-  glm(ZSN ~., data = mi.sub[-j,], family = binomial) 
   probt <- predict(glm.fit, type="response")
-  predt <- rep(0, 1056)
+  predt <- rep(0,k)
   predt[probt>0.5]=1
   pred.train[j] <- mean(predt == mi.sub[-j,]$ZSN) 
   probs.test[j] <- predict(glm.fit, newdata = mi.sub[j,], type="response")
@@ -105,8 +137,9 @@ for(j in 1:k){
 mean(error.test)
 ```
 
+
 ```{r ,warning=FALSE}
-k=1056
+k=nrow(MI.work)
 pred.train=rep(0,k)
 error.test=rep(0,k)
 pred=rep(0,k)
@@ -119,7 +152,7 @@ set.seed(1)
 for(j in 1:k){
   glm.fit <-  glm(ZSN ~., data = MI.work[-j,], family = binomial) 
   probt <- predict(glm.fit, type="response")
-  predt <- rep(0, 1056)
+  predt <- rep(0,k)
   predt[probt>0.5]=1
   pred.train[j] <- mean(predt == MI.work[-j,]$ZSN) 
   probs.test[j] <- predict(glm.fit, newdata = MI.work[j,], type="response")
