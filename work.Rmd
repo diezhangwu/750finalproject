@@ -6,6 +6,8 @@ output: html_notebook
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(stepPlr)
+library(knitr)
 ```
 
 
@@ -71,28 +73,46 @@ dim(choice)
 ```
 
 
-```{r}
+```{r warning=FALSE}
 #Backward selection - on the entire set.
 glm.fit <-  glm(ZSN ~., data = MI.work, family = "binomial") 
 #glm.fit <-  glm(ZSN ~., data = mi.sub, family = "binomial") 
-best.fit.b <- stepAIC(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)), 
+best.fit.b <- step(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)), 
                       trace =F, direction = "backward")
-best.fit.f <- stepAIC(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)),
+best.fit.f <- step(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)),
                       trace =F, direction = "forward")
-#length(best.fit.b$coefficients)
+summary(best.fit.b)$aic
+length(best.fit.b$coefficients)
+#kable(summary(best.fit.b)$coef)
+# AIC - 1087
+p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residuals)
 ```
 
 
 ```{r}
 # full model
-glm.fit <-  glm(ZSN ~., data = MI.work, family = binomial) 
-pred <- predict(glm.fit, type="response")
-summary(glm.fit)
+glm.fitf <-  glm(ZSN ~., data = MI.work, family = binomial) 
+predf <- predict(glm.fitf, type="response")
+summary(glm.fitf)$aic
+
+# choice model - clinically driven - up to admission vars
+glm.fitcc <-  glm(ZSN ~., data =mi.sub, family = binomial) 
+predcc <- predict(glm.fitcc, type="response")
+summary(glm.fitcc)$aic
+
+# choice model - 743 plus additional
+glm.fitcr <-  glm(ZSN ~., data =choice, family = binomial) 
+predcc <- predict(glm.fitcr, type="response")
+summary(glm.fitcr)$aic
 
 # null model
 glm.fit.0 <-  glm(ZSN ~1., data = MI.work, family = binomial) 
 summary(glm.fit.0)
 
+models.table <- data.frame(type=c("Full","choice-educated","choice-random","Backward Selected"),
+                           AIC=c(1184.9,1184.086,1167.96,1087.05), 
+                           p=c(95,86,10,25))
+kable(models.table, caption="Logistic regression models tested")
 ```
 
 ```{r warning=FALSE}
