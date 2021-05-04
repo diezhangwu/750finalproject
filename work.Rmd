@@ -11,7 +11,7 @@ library(gridExtra)
 
 
 ```{r}
-MI <- read.csv("data/Myocardial infarction complications Database.csv")
+MI <- read.csv("12045261/Myocardial infarction complications Database.csv")
 MI <- MI[,c(2:112, 121)]
 dim(MI) # 1700, 112
 
@@ -23,7 +23,7 @@ dim(MI.work) # 1700 112
 
 # dimension of the dataset used in the analysis
 MI.work <- na.omit(MI.work)
-dim(MI.work) # 652 101
+dim(MI.work) # 1074 95
 ```
 
 ### descriptive analysis of demographic information
@@ -31,7 +31,7 @@ dim(MI.work) # 652 101
 mean(MI.work$AGE) # 60.73
 median(MI.work$AGE) # 62
 age.hist <- ggplot(MI.work, aes(MI.work$AGE)) + geom_histogram() + 
-  labs(title = "age distribution", x = "age") + 
+  labs(x = "age", y = "count") + 
   geom_vline(xintercept = mean(MI.work$AGE), color = "blue") + 
   geom_vline(xintercept = median(MI.work$AGE), linetype = "dotted") +
   annotate("text", x = 40, y = 120, label = "mean = 60.73") +
@@ -39,12 +39,19 @@ age.hist <- ggplot(MI.work, aes(MI.work$AGE)) + geom_histogram() +
 
 table(MI.work$SEX)
 sex.plot <- ggplot(MI.work, aes(as.factor(MI.work$SEX))) + geom_bar() + 
-  labs(title = "distribution of sex", x = "sex", y = "") + 
+  labs(x = "sex", y = "") + 
   scale_x_discrete(labels = c("female", "male")) +
   annotate("text", x = 1, y = 780, label = "female = 380") +
   annotate("text", x = 1, y = 720, label = "male = 649") 
 
-grid.arrange(age.hist, sex.plot, nrow = 1)
+table(MI.work$ZSN)
+chf.plot <- ggplot(MI.work, aes(as.factor(MI.work$ZSN))) + geom_bar() + 
+  labs(x = "CHF", y = "") + 
+  scale_x_discrete(labels = c("no", "yes")) +
+  annotate("text", x = 2, y = 780, label = "no = 806") +
+  annotate("text", x = 2, y = 720, label = "yes = 268") 
+
+grid.arrange(age.hist, sex.plot, chf.plot, nrow = 1)
 ```
 
 
@@ -179,7 +186,7 @@ mod.lasso <- glmnet(x, y, alpha = 1, lambda = lambda.best.lasso, family = "binom
 mod.lasso$beta
 
 # compute LOOCV test error rate of Lasso regression
-lasso.pred.correct <- rep(0, n = 1:nrow(MI.work))
+lasso.pred.error <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
   x.train <- x[-i, ]
   y.train <- y[-i]
@@ -190,9 +197,10 @@ for (i in 1:nrow(MI.work)){
   sum(diag(table(predict(mod, newx = x.train, s =lambda.best.lasso, type = "class"), y.train))) / nrow(x.train)
 
   lasso.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
-  lasso.pred.correct[i] <- ifelse( lasso.pred == y.test, 1, 0)
+  lasso.pred.error[i] <- ifelse( lasso.pred != y.test, 1, 0)
 }
-mean(lasso.pred.correct)
+mean(lasso.pred.error) # 0.255
+# 17 parameters selected by lasso
 ```
 
 Ridge regression
