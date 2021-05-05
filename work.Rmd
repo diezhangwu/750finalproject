@@ -1,14 +1,8 @@
 ---
 title: "750 Final Project"
-output:
-<<<<<<< HEAD
-  html_document:
-    df_print: paged
-=======
-  pdf_document: default
-  html_notebook: default
->>>>>>> 16f483c77f9b59c160de13b9d5e35c58a3e967fe
+output: html_notebook
 ---
+
 ```{r}
 library(dplyr)
 library(ggplot2)
@@ -91,12 +85,9 @@ best.fit.f <- step(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)),
                       trace =F, direction = "forward")
 summary(best.fit.b)$aic
 length(best.fit.b$coefficients)
-#kable(summary(best.fit.b)$coef)
-# AIC - 1087
-<<<<<<< HEAD
 
-p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residuals)
-=======
+# AIC - 1087
+
 p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residual)
 
 backwardset <- MI.work %>% 
@@ -107,8 +98,15 @@ backwardset <- MI.work %>%
          TIME_B_S,NA_R_2_n,NOT_NA_1_n,GEPAR_S_n,
          TIKL_S_n)
 
->>>>>>> f0348ebc160415ad5b5262a63d5d0ca54e37a41b
+kable(summary(best.fit.b)$coef)
+kable(summary(glm.fitcr)$coef)
+kable(summary(best.fit.b)$coef)
 ```
+
+
+
+
+
 
 
 ```{r}
@@ -137,7 +135,7 @@ summary(glm.fit.0)
 
 models.table <- data.frame(type=c("Full","Clinical set choice","Our choice","Backward Selected"),
                            AIC=c(1184.9,1184.086,1167.96,1087.05), 
-                           p=c(95,86,10,25),
+                           p=c(95,86,10,24),
                            pval=c(0.306,0.247,0.037,0.597))
 kable(models.table, caption="Logistic regression models tested")
 ```
@@ -282,8 +280,14 @@ testerror <- data.frame(n=c(10,17,25,86,89,95),
 library(ggplot2)
  
 ggplot(testerror, aes(x=n, y=testerr)) +
+<<<<<<< HEAD
   geom_point(size=3, col="black") +
   labs(x="Number of predictors", y="Test (prediction) error")
+=======
+  geom_point(size=3) + 
+  labs(x="Number of predictors",
+       y="Test (prediction) error rate")
+>>>>>>> d7b00ea9181f1fa0e8e34909bea104f2fbbea143
 
 ```
 
