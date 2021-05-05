@@ -1,13 +1,19 @@
 ---
 title: "750 Final Project"
 output:
+<<<<<<< HEAD
   html_notebook: default
   pdf_document: default
+=======
+  html_document:
+    df_print: paged
+>>>>>>> a0a01a189b5440a37d70679af48ed162537f42ae
 ---
 ```{r}
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(kableExtra)
 library(stepPlr)
 library(knitr)
 ```
@@ -15,7 +21,7 @@ library(knitr)
 
 
 ```{r}
-MI <- read.csv("data/Myocardial infarction complications Database.csv")
+MI <- read.csv("12045261/Myocardial infarction complications Database.csv")
 MI <- MI[,c(2:112, 121)]
 dim(MI) # 1700, 112
 
@@ -27,7 +33,7 @@ dim(MI.work) # 1700 112
 
 # dimension of the dataset used in the analysis
 MI.work <- na.omit(MI.work)
-dim(MI.work) # 652 101
+dim(MI.work) # 1074 95
 ```
 
 ### descriptive analysis of demographic information
@@ -35,7 +41,7 @@ dim(MI.work) # 652 101
 mean(MI.work$AGE) # 60.73
 median(MI.work$AGE) # 62
 age.hist <- ggplot(MI.work, aes(MI.work$AGE)) + geom_histogram() + 
-  labs(title = "age distribution", x = "age") + 
+  labs(x = "age", y = "count") + 
   geom_vline(xintercept = mean(MI.work$AGE), color = "blue") + 
   geom_vline(xintercept = median(MI.work$AGE), linetype = "dotted") +
   annotate("text", x = 40, y = 120, label = "mean = 60.73") +
@@ -43,12 +49,19 @@ age.hist <- ggplot(MI.work, aes(MI.work$AGE)) + geom_histogram() +
 
 table(MI.work$SEX)
 sex.plot <- ggplot(MI.work, aes(as.factor(MI.work$SEX))) + geom_bar() + 
-  labs(title = "distribution of sex", x = "sex", y = "") + 
+  labs(x = "sex", y = "") + 
   scale_x_discrete(labels = c("female", "male")) +
   annotate("text", x = 1, y = 780, label = "female = 380") +
   annotate("text", x = 1, y = 720, label = "male = 649") 
 
-grid.arrange(age.hist, sex.plot, nrow = 1)
+table(MI.work$ZSN)
+chf.plot <- ggplot(MI.work, aes(as.factor(MI.work$ZSN))) + geom_bar() + 
+  labs(x = "CHF", y = "") + 
+  scale_x_discrete(labels = c("no", "yes")) +
+  annotate("text", x = 2, y = 780, label = "no = 806") +
+  annotate("text", x = 2, y = 720, label = "yes = 268") 
+
+grid.arrange(age.hist, sex.plot, chf.plot, nrow = 1)
 ```
 
 
@@ -80,6 +93,7 @@ summary(best.fit.b)$aic
 length(best.fit.b$coefficients)
 
 # AIC - 1087
+
 p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residual)
 
 backwardset <- MI.work %>% 
@@ -89,6 +103,7 @@ backwardset <- MI.work %>%
          n_p_ecg_p_04,n_p_ecg_p_06,fibr_ter_03,fibr_ter_06,
          TIME_B_S,NA_R_2_n,NOT_NA_1_n,GEPAR_S_n,
          TIKL_S_n)
+
 kable(summary(best.fit.b)$coef)
 kable(summary(glm.fitcr)$coef)
 kable(summary(best.fit.b)$coef)
@@ -103,10 +118,9 @@ kable(summary(best.fit.b)$coef)
 ```{r}
 # full model
 glm.fitf <-  glm(ZSN ~., data = MI.work, family = binomial) 
-predf <- predict(glm.fitf, newdata=MI.work, type="response")
+predf <- predict(glm.fitf, type="response")
 summary(glm.fitf)$aic
 p.value=1-pchisq(deviance(glm.fitf),glm.fitf$df.residual)
-
 
 # choice model - clinically driven - up to admission vars
 glm.fitcc <-  glm(ZSN ~., data =mi.sub, family = binomial) 
@@ -130,37 +144,6 @@ models.table <- data.frame(type=c("Full","Clinical set choice","Our choice","Bac
                            pval=c(0.306,0.247,0.037,0.597))
 kable(models.table, caption="Logistic regression models tested")
 ```
-
-
-```{r}
-library(ROCR)
-predfull <- prediction(fitted(glm.fitf), MI.work$ZSN)
-stats1 <- performance(predfull, 'tpr', 'fpr')
-
-predbackward <- prediction(fitted(best.fit.b), backwardset$ZSN)
-stats2 <- performance(predbackward, 'tpr', 'fpr')
-
-predcc <- prediction(fitted(glm.fitcc), mi.sub$ZSN)
-stats3 <- performance(predcc, 'tpr', 'fpr')
-
-predcr <- prediction(fitted(glm.fitcr), choice$ZSN)
-stats4 <- performance(predcr, 'tpr', 'fpr')
-
-mod1.lab <- expression('Full model')
-mod2.lab <- expression('Backward Selection')
-mod3.lab <- expression('Clinical set choice')
-mod4.lab <- expression('Our choice')
-
-plot(stats1@x.values[[1]], stats1@y.values[[1]], type='s', 
-     ylab=stats1@y.name, xlab=stats1@x.name, col='red', lwd=2, lty=2)
-lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='blue', lwd=2, )
-lines(stats3@x.values[[1]], stats3@y.values[[1]], type='s', col='green', lwd=2, )
-lines(stats4@x.values[[1]], stats4@y.values[[1]], type='s', col='orange', lwd=2, )
-abline(0,1, col='gray')
-legend('bottomright', c(mod1.lab, mod2.lab, mod3.lab, mod4.lab), col=c('red','blue','green','orange'), 
-       lwd=c(2,1), lty=c(2,1), cex=.9, bty='n')
-```
-
 
 ```{r warning=FALSE}
 k=nrow(choice)
@@ -270,12 +253,12 @@ testerror <- data.frame(n=c(10,17,25,86,89,95),
                                 "clinical set choice","Ridge","Full"))
 library(ggplot2)
  
-ggplot(testerror, aes(x=n, y=testerr)) +
-  geom_point(size=3, col="black") +
-  labs(x="Number of predictors", y="Test (prediction) error")
-
+ggplot(data, aes(x=w, y=)) +
+  geom_point() + # Show dots
+  geom_label(label=rownames(), 
+             nudge_x = 0.25, nudge_y = 0.25, 
+             check_overlap = F)
 ```
-
 
 
 ### Penalized GLM
@@ -294,8 +277,9 @@ lambda.best.lasso <- cv.out.lasso$lambda.min
 mod.lasso <- glmnet(x, y, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
 mod.lasso$beta
 
-# compute LOOCV test error rate of Lasso regression
-lasso.pred.correct <- rep(0, n = 1:nrow(MI.work))
+# compute LOOCV prediction error rate and test error rate of Lasso regression
+lasso.test.error <- rep(0, n = 1:nrow(MI.work))
+lasso.pred.error <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
   x.train <- x[-i, ]
   y.train <- y[-i]
@@ -303,13 +287,25 @@ for (i in 1:nrow(MI.work)){
   y.test <- y[i]
   
   mod <- glmnet(x.train, y.train, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
-  sum(diag(table(predict(mod, newx = x.train, s =lambda.best.lasso, type = "class"), y.train))) / nrow(x.train)
+  
+  lasso.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.lasso, type = "class") != y.train)
 
-  lasso.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
-  lasso.pred.correct[i] <- ifelse( lasso.pred == y.test, 1, 0)
+  lasso.test.pred[i] <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
+  lasso.test.error[i] <- ifelse( lasso.test.pred[i] != y.test, 1, 0)
 }
-mean(lasso.pred.correct)
+mean(lasso.pred.error) # 0.249
+mean(lasso.test.error) # 0.255
+# 17 parameters selected by lasso
 ```
+
+
+```{r}
+# compute test error rate of Lasso regression
+x.test <- model.matrix(ZSN ~., MI.work)[, -95]
+y.test <- MI.work$ZSN
+mean(predict(mod.lasso, newx = x.test, s = lambda.best.lasso, type = "class") != y.test) # 0.2495
+```
+
 
 Ridge regression
 ```{r}
@@ -323,20 +319,58 @@ mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binom
 mod.ridge$beta
 
 # compute LOOCV test error rate of ridge regression
-ridge.pred.correct <- rep(0, n = 1:nrow(MI.work))
+ridge.pred.error <- rep(0, n = 1:nrow(MI.work))
+ridge.test.error <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
   x.train <- x[-i, ]
   y.train <- y[-i]
   x.test <- as.matrix(x[i, ])
   y.test <- y[i]
   
-  mod <- glmnet(x.train, y.train, alpha = 0, lambda = lambda.best.lasso, family = "binomial")
-  sum(diag(table(predict(mod, newx = x.train, s =lambda.best.lasso, type = "class"), y.train))) / nrow(x.train)
+  mod <- glmnet(x.train, y.train, alpha = 0, lambda = lambda.best.ridge, family = "binomial")
+  
+  ridge.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.ridge, type = "class") != y.train)
 
-  ridge.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
-  ridge.pred.correct[i] <- ifelse(ridge.pred == y.test, 1, 0)
+  ridge.test.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.ridge, type = "class")
+  ridge.test.error[i] <- ifelse(ridge.test.pred != y.test, 1, 0)
 }
-mean(ridge.pred.correct)
+mean(ridge.pred.error) # 0.248
+mean(ridge.test.error) # 0.253
+```
+
+```{r}
+# compare lasso and ridge test error and training error
+pglm.table0 <- data.frame(Type = c("Lasso", "Ridge"), Testing_error = c("0.255", "0.253"), Training_error = c("0.249", "0.248"))
+pglm.table <- data.frame(t(pglm.table0[, 2:3]))
+colnames(pglm.table) <- pglm.table0[, 1]
+
+```
+
+```{r}
+kable(pglm.table) %>% kable_styling(font_size = 14, full_width = FALSE) %>% save_kable("error_comparison.pdf")
+```
+
+
+```{r}
+tab.lasso <- tidy(coef(mod.lasso))[, -2]
+tab.ridge <- tidy(coef(mod.ridge))[, -2]
+
+seperate <- left_join(tab.ridge, tab.lasso, by = "row")
+colnames(seperate) <- c("Coefficients", "Lasso estimates", "Ridge estimates")
+seperate
+
+share <- left_join(tab.lasso, tab.ridge, by = "row")
+colnames(share) <- c("Coefficients", "Lasso estimates", "Ridge estimates")
+share
+```
+
+```{r}
+opts_chunk$set(echo = TRUE)
+kable(seperate, caption = "Lasso and Ridge coefficient estimates") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("seperate.pdf")
+```
+
+```{r}
+kable(share, caption = "Lasso and Ridge coefficient estimates") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("share.pdf")
 ```
 
 
