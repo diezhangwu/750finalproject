@@ -434,6 +434,13 @@ legend('bottomright', c("lasso", "ridge", "backward"), col=c('red','blue','green
        lwd=c(2,1), lty=c(2,1), cex=.9, bty='n')
 ```
 
+```{r}
+auc5 <- performance(predlasso, measure = "auc")
+auc5@y.values[[1]]
+
+auc6 <- performance(predridge, measure = "auc")
+auc6@y.values[[1]]
+```
 
 
 # KNN
