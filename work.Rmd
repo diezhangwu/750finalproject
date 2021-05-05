@@ -126,7 +126,7 @@ summary(glm.fit.0)
 
 models.table <- data.frame(type=c("Full","Clinical set choice","Our choice","Backward Selected"),
                            AIC=c(1184.9,1184.086,1167.96,1087.05), 
-                           p=c(95,86,10,25),
+                           p=c(95,86,10,24),
                            pval=c(0.306,0.247,0.037,0.597))
 kable(models.table, caption="Logistic regression models tested")
 ```
