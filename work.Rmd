@@ -253,11 +253,11 @@ testerror <- data.frame(n=c(10,17,25,86,89,95),
                                 "clinical set choice","Ridge","Full"))
 library(ggplot2)
  
-ggplot(data, aes(x=w, y=)) +
-  geom_point() + # Show dots
-  geom_label(label=rownames(), 
-             nudge_x = 0.25, nudge_y = 0.25, 
-             check_overlap = F)
+ggplot(testerror, aes(x=n, y=testerr)) +
+  geom_point(size=3) + 
+  labs(x="Number of predictors",
+       y="Test (prediction) error rate")
+
 ```
 
 
