@@ -1,6 +1,8 @@
 ---
 title: "750 Final Project"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 ```{r}
 library(dplyr)
@@ -94,9 +96,10 @@ backwardset <- MI.work %>%
 ```{r}
 # full model
 glm.fitf <-  glm(ZSN ~., data = MI.work, family = binomial) 
-predf <- predict(glm.fitf, type="response")
+predf <- predict(glm.fitf, newdata=MI.work, type="response")
 summary(glm.fitf)$aic
 p.value=1-pchisq(deviance(glm.fitf),glm.fitf$df.residual)
+
 
 # choice model - clinically driven - up to admission vars
 glm.fitcc <-  glm(ZSN ~., data =mi.sub, family = binomial) 
@@ -120,6 +123,37 @@ models.table <- data.frame(type=c("Full","Clinical set choice","Our choice","Bac
                            pval=c(0.306,0.247,0.037,0.597))
 kable(models.table, caption="Logistic regression models tested")
 ```
+
+
+```{r}
+library(ROCR)
+predfull <- prediction(fitted(glm.fitf), MI.work$ZSN)
+stats1 <- performance(predfull, 'tpr', 'fpr')
+
+predbackward <- prediction(fitted(best.fit.b), backwardset$ZSN)
+stats2 <- performance(predbackward, 'tpr', 'fpr')
+
+predcc <- prediction(fitted(glm.fitcc), mi.sub$ZSN)
+stats3 <- performance(predcc, 'tpr', 'fpr')
+
+predcr <- prediction(fitted(glm.fitcr), choice$ZSN)
+stats4 <- performance(predcr, 'tpr', 'fpr')
+
+mod1.lab <- expression('Full model')
+mod2.lab <- expression('Backward Selection')
+mod3.lab <- expression('Clinical set choice')
+mod4.lab <- expression('Our choice')
+
+plot(stats1@x.values[[1]], stats1@y.values[[1]], type='s', 
+     ylab=stats1@y.name, xlab=stats1@x.name, col='red', lwd=2, lty=2)
+lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='blue', lwd=2, )
+lines(stats3@x.values[[1]], stats3@y.values[[1]], type='s', col='green', lwd=2, )
+lines(stats4@x.values[[1]], stats4@y.values[[1]], type='s', col='orange', lwd=2, )
+abline(0,1, col='gray')
+legend('bottomright', c(mod1.lab, mod2.lab, mod3.lab, mod4.lab), col=c('red','blue','green','orange'), 
+       lwd=c(2,1), lty=c(2,1), cex=.9, bty='n')
+```
+
 
 ```{r warning=FALSE}
 k=nrow(choice)
@@ -229,12 +263,12 @@ testerror <- data.frame(n=c(10,17,25,86,89,95),
                                 "clinical set choice","Ridge","Full"))
 library(ggplot2)
  
-ggplot(data, aes(x=w, y=)) +
-  geom_point() + # Show dots
-  geom_label(label=rownames(), 
-             nudge_x = 0.25, nudge_y = 0.25, 
-             check_overlap = F)
+ggplot(testerror, aes(x=n, y=testerr)) +
+  geom_point(size=3, col="black") +
+  labs(x="Number of predictors", y="Test (prediction) error")
+
 ```
+
 
 
 ### Penalized GLM
