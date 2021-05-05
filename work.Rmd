@@ -88,8 +88,21 @@ summary(best.fit.b)$aic
 length(best.fit.b$coefficients)
 #kable(summary(best.fit.b)$coef)
 # AIC - 1087
+<<<<<<< HEAD
 
 p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residuals)
+=======
+p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residual)
+
+backwardset <- MI.work %>% 
+  select(ZSN,AGE,STENOK_AN,FK_STENOK,ZSN_A,np_08,np_09,
+         endocr_01,zab_leg_01,FIB_G_POST,ant_im,lat_im,
+         inf_im,ritm_ecg_p_02,ritm_ecg_p_04,n_r_ecg_p_02,
+         n_p_ecg_p_04,n_p_ecg_p_06,fibr_ter_03,fibr_ter_06,
+         TIME_B_S,NA_R_2_n,NOT_NA_1_n,GEPAR_S_n,
+         TIKL_S_n)
+
+>>>>>>> f0348ebc160415ad5b5262a63d5d0ca54e37a41b
 ```
 
 
@@ -98,24 +111,28 @@ p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residuals)
 glm.fitf <-  glm(ZSN ~., data = MI.work, family = binomial) 
 predf <- predict(glm.fitf, type="response")
 summary(glm.fitf)$aic
+p.value=1-pchisq(deviance(glm.fitf),glm.fitf$df.residual)
 
 # choice model - clinically driven - up to admission vars
 glm.fitcc <-  glm(ZSN ~., data =mi.sub, family = binomial) 
 predcc <- predict(glm.fitcc, type="response")
 summary(glm.fitcc)$aic
+p.value=1-pchisq(deviance(glm.fitcc),glm.fitcc$df.residual)
 
 # choice model - 743 plus additional
 glm.fitcr <-  glm(ZSN ~., data =choice, family = binomial) 
-predcc <- predict(glm.fitcr, type="response")
+predcr <- predict(glm.fitcr, type="response")
 summary(glm.fitcr)$aic
+p.value=1-pchisq(deviance(glm.fitcr),glm.fitcr$df.residual)
 
 # null model
 glm.fit.0 <-  glm(ZSN ~1., data = MI.work, family = binomial) 
 summary(glm.fit.0)
 
-models.table <- data.frame(type=c("Full","choice-educated","choice-random","Backward Selected"),
+models.table <- data.frame(type=c("Full","Clinical set choice","Our choice","Backward Selected"),
                            AIC=c(1184.9,1184.086,1167.96,1087.05), 
-                           p=c(95,86,10,25))
+                           p=c(95,86,10,25),
+                           pval=c(0.306,0.247,0.037,0.597))
 kable(models.table, caption="Logistic regression models tested")
 ```
 
@@ -192,6 +209,48 @@ for(j in 1:k){
 }
 mean(error.test)
 ```
+
+
+```{r ,warning=FALSE}
+k=nrow(MI.work)
+pred.train=rep(0,k)
+error.test=rep(0,k)
+pred=rep(0,k)
+train.error=rep(0,k)
+pred.test=rep(0,k)
+probs.test=rep(0,k)
+set.seed(1)
+
+# LOOCV for backward selected set model
+for(j in 1:k){
+  glm.fit <-  glm(ZSN ~., data = backwardset[-j,], family = binomial) 
+  probt <- predict(glm.fit, type="response")
+  predt <- rep(0,k)
+  predt[probt>0.5]=1
+  pred.train[j] <- mean(predt == backwardset[-j,]$ZSN) 
+  probs.test[j] <- predict(glm.fit, newdata = backwardset[j,], type="response")
+  pred.test[j] <- (probs.test[j]>.5)
+  error.test[j] <- (pred.test[j]!=backwardset[j,]$ZSN)
+}
+mean(error.test)
+```
+
+```{r}
+#prepare data for test error plot 
+testerror <- data.frame(n=c(10,17,25,86,89,95),
+                        testerr=c(0.249,0.255,0.247,0.262,0.271,0.269),
+                        train.err=c(0,0,0,0,0,0),
+                        mtype=c("our Choice","LASSO","Backward Selection",
+                                "clinical set choice","Ridge","Full"))
+library(ggplot2)
+ 
+ggplot(data, aes(x=w, y=)) +
+  geom_point() + # Show dots
+  geom_label(label=rownames(), 
+             nudge_x = 0.25, nudge_y = 0.25, 
+             check_overlap = F)
+```
+
 
 ### Penalized GLM
 Lasso regression
@@ -272,15 +331,38 @@ mean(ridge.test.error) # 0.253
 
 ```{r}
 # compare lasso and ridge test error and training error
-pglm.table <- data.frame(t(data.frame(Type = c("Lasso", "Ridge"), Testing_error = c("0.255", "0.253"), Training_error = c("0.249", "0.248"))))
-names(pglm.table) <- NULL
-kable(pglm.table) %>% kable_styling(font_size = 14, full_width = FALSE) %>% column_spec(1:3, bold = TRUE, color = "black") 
+pglm.table0 <- data.frame(Type = c("Lasso", "Ridge"), Testing_error = c("0.255", "0.253"), Training_error = c("0.249", "0.248"))
+pglm.table <- data.frame(t(pglm.table0[, 2:3]))
+colnames(pglm.table) <- pglm.table0[, 1]
+
 ```
 
 ```{r}
-cbind(coef(mod.lasso), coef(mod.ridge))
+kable(pglm.table) %>% kable_styling(font_size = 14, full_width = FALSE) %>% save_kable("error_comparison.pdf")
 ```
 
+
+```{r}
+tab.lasso <- tidy(coef(mod.lasso))[, -2]
+tab.ridge <- tidy(coef(mod.ridge))[, -2]
+
+seperate <- left_join(tab.ridge, tab.lasso, by = "row")
+colnames(seperate) <- c("Coefficients", "Lasso estimates", "Ridge estimates")
+seperate
+
+share <- left_join(tab.lasso, tab.ridge, by = "row")
+colnames(share) <- c("Coefficients", "Lasso estimates", "Ridge estimates")
+share
+```
+
+```{r}
+opts_chunk$set(echo = TRUE)
+kable(seperate, caption = "Lasso and Ridge coefficient estimates") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("seperate.pdf")
+```
+
+```{r}
+kable(share, caption = "Lasso and Ridge coefficient estimates") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("share.pdf")
+```
 
 
 # KNN
