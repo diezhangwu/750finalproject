@@ -1,8 +1,13 @@
 ---
 title: "750 Final Project"
 output:
+<<<<<<< HEAD
   html_document:
     df_print: paged
+=======
+  pdf_document: default
+  html_notebook: default
+>>>>>>> 16f483c77f9b59c160de13b9d5e35c58a3e967fe
 ---
 ```{r}
 library(dplyr)
@@ -109,9 +114,10 @@ backwardset <- MI.work %>%
 ```{r}
 # full model
 glm.fitf <-  glm(ZSN ~., data = MI.work, family = binomial) 
-predf <- predict(glm.fitf, type="response")
+predf <- predict(glm.fitf, newdata=MI.work, type="response")
 summary(glm.fitf)$aic
 p.value=1-pchisq(deviance(glm.fitf),glm.fitf$df.residual)
+
 
 # choice model - clinically driven - up to admission vars
 glm.fitcc <-  glm(ZSN ~., data =mi.sub, family = binomial) 
@@ -135,6 +141,37 @@ models.table <- data.frame(type=c("Full","Clinical set choice","Our choice","Bac
                            pval=c(0.306,0.247,0.037,0.597))
 kable(models.table, caption="Logistic regression models tested")
 ```
+
+
+```{r}
+library(ROCR)
+predfull <- prediction(fitted(glm.fitf), MI.work$ZSN)
+stats1 <- performance(predfull, 'tpr', 'fpr')
+
+predbackward <- prediction(fitted(best.fit.b), backwardset$ZSN)
+stats2 <- performance(predbackward, 'tpr', 'fpr')
+
+predcc <- prediction(fitted(glm.fitcc), mi.sub$ZSN)
+stats3 <- performance(predcc, 'tpr', 'fpr')
+
+predcr <- prediction(fitted(glm.fitcr), choice$ZSN)
+stats4 <- performance(predcr, 'tpr', 'fpr')
+
+mod1.lab <- expression('Full model')
+mod2.lab <- expression('Backward Selection')
+mod3.lab <- expression('Clinical set choice')
+mod4.lab <- expression('Our choice')
+
+plot(stats1@x.values[[1]], stats1@y.values[[1]], type='s', 
+     ylab=stats1@y.name, xlab=stats1@x.name, col='red', lwd=2, lty=2)
+lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='blue', lwd=2, )
+lines(stats3@x.values[[1]], stats3@y.values[[1]], type='s', col='green', lwd=2, )
+lines(stats4@x.values[[1]], stats4@y.values[[1]], type='s', col='orange', lwd=2, )
+abline(0,1, col='gray')
+legend('bottomright', c(mod1.lab, mod2.lab, mod3.lab, mod4.lab), col=c('red','blue','green','orange'), 
+       lwd=c(2,1), lty=c(2,1), cex=.9, bty='n')
+```
+
 
 ```{r warning=FALSE}
 k=nrow(choice)
@@ -244,12 +281,12 @@ testerror <- data.frame(n=c(10,17,25,86,89,95),
                                 "clinical set choice","Ridge","Full"))
 library(ggplot2)
  
-ggplot(data, aes(x=w, y=)) +
-  geom_point() + # Show dots
-  geom_label(label=rownames(), 
-             nudge_x = 0.25, nudge_y = 0.25, 
-             check_overlap = F)
+ggplot(testerror, aes(x=n, y=testerr)) +
+  geom_point(size=3, col="black") +
+  labs(x="Number of predictors", y="Test (prediction) error")
+
 ```
+
 
 
 ### Penalized GLM
@@ -289,13 +326,6 @@ mean(lasso.test.error) # 0.255
 # 17 parameters selected by lasso
 ```
 
-
-```{r}
-# compute test error rate of Lasso regression
-x.test <- model.matrix(ZSN ~., MI.work)[, -95]
-y.test <- MI.work$ZSN
-mean(predict(mod.lasso, newx = x.test, s = lambda.best.lasso, type = "class") != y.test) # 0.2495
-```
 
 
 Ridge regression
@@ -347,7 +377,7 @@ tab.lasso <- tidy(coef(mod.lasso))[, -2]
 tab.ridge <- tidy(coef(mod.ridge))[, -2]
 
 seperate <- left_join(tab.ridge, tab.lasso, by = "row")
-colnames(seperate) <- c("Coefficients", "Lasso estimates", "Ridge estimates")
+colnames(seperate) <- c("Coefficients", "Ridge estimates", "Lasso estimates")
 seperate
 
 share <- left_join(tab.lasso, tab.ridge, by = "row")
@@ -356,7 +386,7 @@ share
 ```
 
 ```{r}
-opts_chunk$set(echo = TRUE)
+#opts_chunk$set(echo = TRUE)
 kable(seperate, caption = "Lasso and Ridge coefficient estimates") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("seperate.pdf")
 ```
 
@@ -370,10 +400,10 @@ kable(share, caption = "Lasso and Ridge coefficient estimates") %>% kable_stylin
 library(class)
 # use LOOCV to determine the best number of K
 x.matrix <- as.matrix(MI.work[, -95])
-k <- c(1:100)
+k <- c(1:50)
 pred <- rep(0, nrow(MI.work))
 pred.error <- rep(0, length(k))
-
+knn.pred <- rep(0, nrow(MI.work))
 
 for (j in 1:length(k)){
         for (i in 1:nrow(MI.work)){
@@ -384,27 +414,45 @@ for (j in 1:length(k)){
                 test.ZSN <- MI.work$ZSN[i]
                 
                 set.seed(1)
-                knn.pred <-  knn(train.x, test.x, train.ZSN, k = k[j])
-                pred[i] <- ifelse(knn.pred != test.ZSN, 1, 0)
+                knn.pred[i] <-  knn(train.x, test.x, train.ZSN, k = k[j])
+                pred[i] <- ifelse(knn.pred[i] != test.ZSN, 1, 0)
         }
         
         pred.error[j] <- mean(pred)
 }
 
-which.min(pred.error) #54
+which.min(pred.error) #27
 knn.output <- as.data.frame(cbind(pred.error, k))
-ggplot(knn.output, aes(y = pred.error, x = k)) + geom_point() + labs(title = "KNN test error rate by number of k", x = "k", y = "LOOCV test error rate") + geom_vline(xintercept = which.min(pred.error), color = "blue", linetype = "dotted") + geom_vline(xintercept = 41, color = "red", linetype = "dotted") + scale_x_continuous(breaks = c(0, 25, 41, 50, 54, 75, 100)) 
+ggplot(knn.output, aes(y = pred.error, x = k)) + geom_point() + labs(title = "KNN test error rate by number of k", x = "k", y = "LOOCV test error rate") + geom_vline(xintercept = which.min(pred.error), color = "blue", linetype = "dotted") + scale_x_continuous(breaks = c(0, 25, 27, 50)) 
 ```
+
 
 ```{r}
-# compute prediction error rate
-pred41 <- knn(MI.work[, -95], MI.work[, -95], MI.work$ZSN, k = 32)
-mean(pred41 != MI.work$ZSN)
+knn.train.error <- rep(0, nrow(MI.work))
+knn.test.error <- rep(0, nrow(MI.work))
+knn.test <- rep(0, nrow(MI.work))
 
-pred54 <- knn(MI.work[, -95], MI.work[, -95], MI.work$ZSN, k = 45)
-mean(pred54 != MI.work$ZSN)
+for (i in 1:nrow(MI.work)){
+        # set up training set and testing set
+        train.x <- x.matrix[-i, ]
+        test.x <- x.matrix[i, ]
+        train.ZSN <- MI.work$ZSN[-i]
+        test.ZSN <- MI.work$ZSN[i]
+                
+        set.seed(1)
+                
+        # compute training error rate
+        knn.train <- knn(train.x, train.x, train.ZSN, k = 27)
+        knn.train.error[i] <- mean(knn.train != train.ZSN)
+                
+        # compute testing error rate
+        knn.test[i] <-  knn(train.x, test.x, train.ZSN, k = 27)
+        knn.test.error[i] <- ifelse(knn.test[i] != test.ZSN, 1, 0)
+}
+
+mean(knn.train.error)
+mean(knn.test.error)
 ```
-
 
 
 
