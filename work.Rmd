@@ -1,11 +1,14 @@
 ---
 title: "750 Final Project"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 ```{r}
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(kableExtra)
 library(stepPlr)
 library(knitr)
 ```
@@ -85,6 +88,7 @@ summary(best.fit.b)$aic
 length(best.fit.b$coefficients)
 #kable(summary(best.fit.b)$coef)
 # AIC - 1087
+
 p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residuals)
 ```
 
@@ -205,7 +209,8 @@ lambda.best.lasso <- cv.out.lasso$lambda.min
 mod.lasso <- glmnet(x, y, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
 mod.lasso$beta
 
-# compute LOOCV test error rate of Lasso regression
+# compute LOOCV prediction error rate and test error rate of Lasso regression
+lasso.test.error <- rep(0, n = 1:nrow(MI.work))
 lasso.pred.error <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
   x.train <- x[-i, ]
@@ -214,14 +219,25 @@ for (i in 1:nrow(MI.work)){
   y.test <- y[i]
   
   mod <- glmnet(x.train, y.train, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
-  sum(diag(table(predict(mod, newx = x.train, s =lambda.best.lasso, type = "class"), y.train))) / nrow(x.train)
+  
+  lasso.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.lasso, type = "class") != y.train)
 
-  lasso.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
-  lasso.pred.error[i] <- ifelse( lasso.pred != y.test, 1, 0)
+  lasso.test.pred[i] <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
+  lasso.test.error[i] <- ifelse( lasso.test.pred[i] != y.test, 1, 0)
 }
-mean(lasso.pred.error) # 0.255
+mean(lasso.pred.error) # 0.249
+mean(lasso.test.error) # 0.255
 # 17 parameters selected by lasso
 ```
+
+
+```{r}
+# compute test error rate of Lasso regression
+x.test <- model.matrix(ZSN ~., MI.work)[, -95]
+y.test <- MI.work$ZSN
+mean(predict(mod.lasso, newx = x.test, s = lambda.best.lasso, type = "class") != y.test) # 0.2495
+```
+
 
 Ridge regression
 ```{r}
@@ -235,21 +251,36 @@ mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binom
 mod.ridge$beta
 
 # compute LOOCV test error rate of ridge regression
-ridge.pred.correct <- rep(0, n = 1:nrow(MI.work))
+ridge.pred.error <- rep(0, n = 1:nrow(MI.work))
+ridge.test.error <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
   x.train <- x[-i, ]
   y.train <- y[-i]
   x.test <- as.matrix(x[i, ])
   y.test <- y[i]
   
-  mod <- glmnet(x.train, y.train, alpha = 0, lambda = lambda.best.lasso, family = "binomial")
-  sum(diag(table(predict(mod, newx = x.train, s =lambda.best.lasso, type = "class"), y.train))) / nrow(x.train)
+  mod <- glmnet(x.train, y.train, alpha = 0, lambda = lambda.best.ridge, family = "binomial")
+  
+  ridge.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.ridge, type = "class") != y.train)
 
-  ridge.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
-  ridge.pred.correct[i] <- ifelse(ridge.pred == y.test, 1, 0)
+  ridge.test.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.ridge, type = "class")
+  ridge.test.error[i] <- ifelse(ridge.test.pred != y.test, 1, 0)
 }
-mean(ridge.pred.correct)
+mean(ridge.pred.error) # 0.248
+mean(ridge.test.error) # 0.253
 ```
+
+```{r}
+# compare lasso and ridge test error and training error
+pglm.table <- data.frame(t(data.frame(Type = c("Lasso", "Ridge"), Testing_error = c("0.255", "0.253"), Training_error = c("0.249", "0.248"))))
+names(pglm.table) <- NULL
+kable(pglm.table) %>% kable_styling(font_size = 14, full_width = FALSE) %>% column_spec(1:3, bold = TRUE, color = "black") 
+```
+
+```{r}
+cbind(coef(mod.lasso), coef(mod.ridge))
+```
+
 
 
 # KNN
