@@ -1,8 +1,8 @@
 ---
 title: "750 Final Project"
 output:
-  pdf_document: default
   html_notebook: default
+  pdf_document: default
 ---
 ```{r}
 library(dplyr)
@@ -78,7 +78,7 @@ best.fit.f <- step(glm.fit, scope=list(lower = ~ 1, upper = formula(glm.fit)),
                       trace =F, direction = "forward")
 summary(best.fit.b)$aic
 length(best.fit.b$coefficients)
-#kable(summary(best.fit.b)$coef)
+
 # AIC - 1087
 p.value=1-pchisq(deviance(best.fit.b),best.fit.b$df.residual)
 
@@ -89,8 +89,15 @@ backwardset <- MI.work %>%
          n_p_ecg_p_04,n_p_ecg_p_06,fibr_ter_03,fibr_ter_06,
          TIME_B_S,NA_R_2_n,NOT_NA_1_n,GEPAR_S_n,
          TIKL_S_n)
-
+kable(summary(best.fit.b)$coef)
+kable(summary(glm.fitcr)$coef)
+kable(summary(best.fit.b)$coef)
 ```
+
+
+
+
+
 
 
 ```{r}
