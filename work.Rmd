@@ -403,6 +403,25 @@ kable(share, caption = "Lasso and Ridge coefficient estimates") %>% kable_stylin
 ```
 
 
+```{r}
+# ROC curve of lasso and ridge regression
+predlasso <- prediction(predict(mod.lasso, x, type = "response"), MI.work$ZSN)
+stats5 <- performance(predlasso, 'tpr', 'fpr')
+
+predridge <- prediction(predict(mod.ridge, x, type = "response"), MI.work$ZSN)
+stats6 <- performance(predridge, 'tpr', 'fpr')
+
+plot(stats5@x.values[[1]], stats5@y.values[[1]], type='s', 
+     ylab=stats5@y.name, xlab=stats5@x.name, col='red', lwd=2, lty=2)
+lines(stats6@x.values[[1]], stats6@y.values[[1]], type='s', col='blue', lwd=2, )
+lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='green', lwd=2, )
+abline(0,1, col='gray')
+legend('bottomright', c("lasso", "ridge", "backward"), col=c('red','blue','green'), 
+       lwd=c(2,1), lty=c(2,1), cex=.9, bty='n')
+```
+
+
+
 # KNN
 ```{r}
 library(class)
