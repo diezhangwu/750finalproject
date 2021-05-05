@@ -282,9 +282,16 @@ library(ggplot2)
 ggplot(testerror, aes(x=n, y=testerr)) +
   geom_point(size=2) + 
   labs(x="Number of predictors",
-       y="Prediction error rate")+
+       y="Test (Prediction) error rate")+
   geom_text(label=testerror$mtype, check_overlap = T, nudge_x = 3, vjust=1.3)
-  #geom_point(aes(x=n, y=train.err), col="red")
+  
+
+ggplot(testerror, aes(x=n, y=train.err)) +
+  geom_point(size=2, col="red") + 
+  labs(x="Number of predictors",
+       y="Training (Prediction) error rate")+
+  geom_text(label=testerror$mtype, check_overlap = T, nudge_x = 3, vjust=1.3)+
+  coord_cartesian(ylim = c(0.2, 0.27))
 
 ```
 
