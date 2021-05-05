@@ -456,7 +456,21 @@ mean(knn.test.error)
 ```
 
 
+```{r}
+coefb <- coef(best.fit.b)
+tab.coefb <- data.frame(list(names = names(coefb), coefs = coefb))
+colnames(tab.coefb) <- c("Coefficients", "Backward estimation")
+back.lasso.full <- full_join(tab.coefb, share, by = "Coefficients")[, -4]
+back.lasso.share <- inner_join(tab.coefb, share, by = "Coefficients")[, -4]
+```
 
 
+```{r}
+kable(back.lasso.full, caption = "coefficient estimates form backward selection and lasso regression") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("backlassofull.pdf")
+```
+
+```{r}
+kable(back.lasso.share, caption = "shared coefficients of backward selection and lasso regression") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("backlassoshare.pdf")
+```
 
 
