@@ -74,6 +74,12 @@ choice <- MI.work %>%
 dim(choice)
 ```
 
+```{r}
+#pairs(choice)
+
+```
+
+
 
 ```{r warning=FALSE}
 #Backward selection - on the entire set.
@@ -145,15 +151,23 @@ kable(models.table, caption="Logistic regression models tested")
 library(ROCR)
 predfull <- prediction(fitted(glm.fitf), MI.work$ZSN)
 stats1 <- performance(predfull, 'tpr', 'fpr')
+auc1 <- performance(predfull, measure = "auc")
+auc1@y.values[[1]]
 
 predbackward <- prediction(fitted(best.fit.b), backwardset$ZSN)
 stats2 <- performance(predbackward, 'tpr', 'fpr')
+auc2 <- performance(predbackward, measure = "auc")
+auc2@y.values[[1]]
 
 predcc <- prediction(fitted(glm.fitcc), mi.sub$ZSN)
 stats3 <- performance(predcc, 'tpr', 'fpr')
+auc3 <- performance(predcc,  measure = "auc")
+auc3@y.values[[1]]
 
 predcr <- prediction(fitted(glm.fitcr), choice$ZSN)
 stats4 <- performance(predcr, 'tpr', 'fpr')
+auc4 <- performance(predcr, measure = "auc")
+auc4@y.values[[1]]
 
 mod1.lab <- expression('Full model')
 mod2.lab <- expression('Backward Selection')
