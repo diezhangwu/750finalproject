@@ -248,15 +248,16 @@ mean(error.test)
 #prepare data for test error plot 
 testerror <- data.frame(n=c(10,17,25,86,89,95),
                         testerr=c(0.249,0.255,0.247,0.262,0.271,0.269),
-                        train.err=c(0,0,0,0,0,0),
+                        train.err=c(0.246,0,0,0,0,0.221),
                         mtype=c("our Choice","LASSO","Backward Selection",
                                 "clinical set choice","Ridge","Full"))
 library(ggplot2)
  
 ggplot(testerror, aes(x=n, y=testerr)) +
-  geom_point(size=3) + 
+  geom_point(size=2) + 
   labs(x="Number of predictors",
-       y="Test (prediction) error rate")
+       y="Prediction error rate")+
+  geom_text(label=testerror$mtype, check_overlap = T, nudge_x = 3, vjust=1.3)
 
 ```
 
