@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(dplyr)
 library(ggplot2)
+library(glmnet)
 library(gridExtra)
 library(kableExtra)
 library(stepPlr)
@@ -37,6 +38,14 @@ dim(MI.work) # 1700 112
 MI.work <- na.omit(MI.work)
 dim(MI.work) # 1074 95
 ```
+
+```{r}
+# transfer variable IBS_POST 
+MI.work$IBS_POST <- ifelse(MI.work$IBS_POST == 0, 0, 1)
+# change ZSN_A to character variable and relevel with 0 being the reference group
+MI.work$ZSN_A <- as.character(MI.work$ZSN_A)
+```
+
 
 ### descriptive analysis of demographic information
 ```{r}
@@ -115,7 +124,7 @@ prescreen <- function(traindata){
   tokeep <- c()
   for (i in 1:94){
     uni <- glm(traindata$ZSN~traindata[,i],family = binomial)
-    if(dim(summary(uni)$coef)[1]>1 & summary(uni)$coefficient[,4][2]<0.1){
+    if(dim(summary(uni)$coef)[1]>1 & summary(uni)$coefficient[,4][2]<0.2){
       tokeep <- c(tokeep,i)
     }
   }
@@ -322,11 +331,10 @@ ggplot(testerror, aes(x=n, y=train.err)) +
 ### Penalized GLM
 Lasso regression
 ```{r}
-library(glmnet)
 # select best lambda via LOOCV 
 set.seed(1)
-x <- model.matrix(ZSN ~., MI.work)[, -95]
-y <- MI.work$ZSN
+x <- model.matrix(ZSN ~., prescreen(MI.work))[, -1]
+y <- prescreen(MI.work)$ZSN
 cv.out.lasso <- cv.glmnet(x, y, alpha = 1, family = "binomial", nfolds = nrow(MI.work))
 plot(cv.out.lasso)
 lambda.best.lasso <- cv.out.lasso$lambda.min
@@ -338,22 +346,46 @@ mod.lasso$beta
 # compute LOOCV prediction error rate and test error rate of Lasso regression
 lasso.test.error <- rep(0, n = 1:nrow(MI.work))
 lasso.pred.error <- rep(0, n = 1:nrow(MI.work))
+lasso.auc <- rep(0, n = 1:nrow(MI.work))
+# x.pred <- c(1:1064)
+# y.pred <- c(1:1064)
 for (i in 1:nrow(MI.work)){
-  x.train <- x[-i, ]
-  y.train <- y[-i]
-  x.test <- as.matrix(x[i, ])
-  y.test <- y[i]
-  
-  mod <- glmnet(x.train, y.train, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
-  
-  lasso.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.lasso, type = "class") != y.train)
+        
+        work.dat <- MI.work[-i,]
+        train.dat <- MI.work[i, ]
+        
+        x.train <- prescreen(work.dat)[, -1]
+        y.train <- prescreen(work.dat)[, 1]
+        
+        x.test <- train.dat[, names(prescreen(work.dat))][, -1]
+        y.test <- train.dat[, names(prescreen(work.dat))][, 1]
+        
+        mod <- glmnet(x.train, y.train, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
+        
+        lasso.pred.error[i] <- mean(predict(mod, newx = data.matrix(x.train), s = lambda.best.lasso, type = "class") != y.train)
+        lasso.test.pred[i] <- predict(mod, newx = data.matrix(x.test), s = lambda.best.lasso, type = "class")
+        lasso.test.error[i] <- ifelse( lasso.test.pred[i] != y.test, 1, 0)
 
-  lasso.test.pred[i] <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
-  lasso.test.error[i] <- ifelse( lasso.test.pred[i] != y.test, 1, 0)
+
+        predlasso <- prediction(predict(mod, data.matrix(x.train), type = "response"), y.train)
+        stats <- performance(predlasso, 'tpr', 'fpr')
+        #x.pred <- cbind(x.pred, stats@x.values[[1]])
+        #y.pred <- cbind(y.pred, stats@y.values[[1]])
+
+        auc <- performance(predlasso, measure = "auc")
+        lasso.auc[i] <- auc@y.values[[1]]
 }
-mean(lasso.pred.error) # 0.249
-mean(lasso.test.error) # 0.255
+mean(lasso.pred.error) # 0.237
+mean(lasso.test.error) # 0.266
+mean(lasso.auc) #0.7598
 # 17 parameters selected by lasso
+```
+
+```{r}
+lasso.x.pred <- rowMeans(x.pred)
+lasso.y.pred <- rowMeans(y.pred)
+plot(lasso.x.pred, lasso.y.pred, type='s', 
+     ylab=stats@y.name, xlab=stats@x.name, col='red', lwd=2, lty=2)
 ```
 
 
@@ -372,21 +404,35 @@ mod.ridge$beta
 # compute LOOCV test error rate of ridge regression
 ridge.pred.error <- rep(0, n = 1:nrow(MI.work))
 ridge.test.error <- rep(0, n = 1:nrow(MI.work))
+ridge.test.pred <- rep(0, n = 1:nrow(MI.work))
+ridge.auc <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
-  x.train <- x[-i, ]
-  y.train <- y[-i]
-  x.test <- as.matrix(x[i, ])
-  y.test <- y[i]
-  
-  mod <- glmnet(x.train, y.train, alpha = 0, lambda = lambda.best.ridge, family = "binomial")
-  
-  ridge.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.ridge, type = "class") != y.train)
+        work.dat <- MI.work[-i,]
+        train.dat <- MI.work[i, ]
+        
+        x.train <- prescreen(work.dat)[, -1]
+        y.train <- prescreen(work.dat)[, 1]
+        
+        x.test <- train.dat[, names(prescreen(work.dat))][, -1]
+        y.test <- train.dat[, names(prescreen(work.dat))][, 1]
+        
+        mod.r <- glmnet(x.train, y.train, alpha = 1, lambda = lambda.best.ridge, family = "binomial")
+        
+        ridge.pred.error[i] <- mean(predict(mod.r, newx = data.matrix(x.train), s = lambda.best.ridge, type = "class") != y.train)
+        ridge.test.pred[i] <- predict(mod.r, newx = data.matrix(x.test), s = lambda.best.ridge, type = "class")
+        ridge.test.error[i] <- ifelse(ridge.test.pred[i] != y.test, 1, 0)
+        
+        predridge <- prediction(predict(mod.r, data.matrix(x.train), type = "response"), y.train)
+        stats <- performance(predridge, 'tpr', 'fpr')
+        #x.pred <- cbind(x.pred, stats@x.values[[1]])
+        #y.pred <- cbind(y.pred, stats@y.values[[1]])
 
-  ridge.test.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.ridge, type = "class")
-  ridge.test.error[i] <- ifelse(ridge.test.pred != y.test, 1, 0)
+        auc <- performance(predridge, measure = "auc")
+        ridge.auc[i] <- auc@y.values[[1]]
 }
-mean(ridge.pred.error) # 0.248
-mean(ridge.test.error) # 0.253
+mean(ridge.pred.error) # 0.253
+mean(ridge.test.error)# 0.2495
+mean(ridge.auc) # 0.7025
 ```
 
 ```{r}
