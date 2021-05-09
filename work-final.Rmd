@@ -378,7 +378,6 @@ for (i in 1:nrow(MI.work)){
 mean(lasso.pred.error) # 0.237
 mean(lasso.test.error) # 0.266
 mean(lasso.auc) #0.7598
-# 17 parameters selected by lasso
 ```
 
 ```{r}
