@@ -30,6 +30,15 @@ MI.work <- na.omit(MI.work)
 dim(MI.work) # 1074 95
 ```
 
+
+```{r}
+# transfer variable IBS_POST 
+MI.work$IBS_POST <- ifelse(MI.work$IBS_POST == 0, 0, 1)
+# change ZSN_A to character variable and relevel with 0 being the reference group
+MI.work$ZSN_A <- as.character(MI.work$ZSN_A)
+```
+
+
 ### descriptive analysis of demographic information
 ```{r}
 mean(MI.work$AGE) # 60.73
