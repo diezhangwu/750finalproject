@@ -378,7 +378,7 @@ for (i in 1:nrow(MI.work)){
 mean(lasso.pred.error) # 0.237
 mean(lasso.test.error) # 0.266
 mean(lasso.auc) #0.7598
-# 17 parameters selected by lasso
+# 26 parameters selected by lasso
 ```
 
 ```{r}
@@ -398,7 +398,7 @@ plot(cv.out.ridge)
 lambda.best.ridge <- cv.out.ridge$lambda.min
 
 # fit ridge regression on the dataset
-mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binomial")
+mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binomial") # 35 predictors by ridge
 mod.ridge$beta
 
 # compute LOOCV test error rate of ridge regression
