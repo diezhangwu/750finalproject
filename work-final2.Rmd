@@ -395,16 +395,16 @@ errortable <- data.frame(err.full=c(94,0.2318436,0.1883966,0.8161491),
                         err.ridge=c(88,0.221,0.199,0.807),
                         err.ridge.screen=c(32,0.2495,0.253,0.7025)
                         )
-mat <- as.matrix(errortable)
-mat.t <- t(mat)
-kable(mat.t, caption="Models' performance - LOOCV step",
-      row.names = c(" ","Full model","Univariate pre-screen","Clinical Choice",
+rownames(errortable) <- c("# Predictors","Test error","Training error", "AUC")
+colnames(errortable) <- c("Full model","Univariate pre-screen","Clinical Choice",
                     "Investigator's choice",
                     "Backward Selection","Backward Selection + pre-screen",
                     "Lasso","Lasso + pre-screen",
-                    "Ridge Selection","Ridge + pre-screen"),
-      col.names = c("# Predictors","Test error","Training error", "AUC")
-      )
+                    "Ridge Selection","Ridge + pre-screen")
+
+mat <- as.matrix(errortable)
+mat.t <- t(mat)
+kable(mat.t, caption="Models' performance - LOOCV step")
 ```
 
 
