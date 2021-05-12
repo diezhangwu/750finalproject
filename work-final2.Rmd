@@ -756,9 +756,10 @@ mean(knn.test.error)
 ```{r}
 coefb <- coef(glm.fitb)
 tab.coefb <- data.frame(list(names = names(coefb), coefs = coefb))
-tab.lasso <- tidy(coef(mod.lasso))[, -2]
 colnames(tab.coefb) <- c("Coefficients", "Backward estimates")
-back.lasso.full <- full_join(tab.coefb, share, by = "Coefficients")[, -4]
+tab.lasso <- tidy(coef(mod.lasso))[, -2]
+colnames(tab.lasso) <- c("Coefficients", "Lasso estimates")
+back.lasso.full <- full_join(tab.coefb, tab.lasso, by = "Coefficients")[, -4]
 kable(back.lasso.full, caption = "Table 4. Coefficient estimates form backward selection and lasso regression") %>% kable_styling(font_size = 10, full_width = F)
 ```
 
