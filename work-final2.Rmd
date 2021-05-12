@@ -534,7 +534,7 @@ plot(cv.out.ridge.s)
 lambda.best.ridge.s <- cv.out.ridge.s$lambda.min
 
 # fit ridge regression on the dataset
-mod.ridge.s <- glmnet(x.s, y.s, alpha = 0, lambda = lambda.best.ridge.s, family = "binomial") # 35 predictors by ridge
+mod.ridge.s <- glmnet(x.s, y.s, alpha = 0, lambda = lambda.best.ridge.s, family = "binomial") # 32 predictors by ridge
 mod.ridge.s$beta
 
 # Compute AIC values of lasso model
