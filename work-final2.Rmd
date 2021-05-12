@@ -391,16 +391,14 @@ ggplot(testerror, aes(x=n, y=train.err)) +
 
 ```
 
-
 ```{r echo=FALSE}
-
 models.u.table <- data.frame(type=c("Investigators' choice","Univariate Pre-screen",
                                     "Clinical set choice","Full"),
-                           AIC=c(1167.811,1036.239,1095.763,1100.243), 
-                           p=c(9,32,84,94),
-                           pval=c(0.037,0.95,0.91,0.93))
+                              p=c(9,32,84,94),
+                              AIC=c(1167.811,1036.239,1095.763,1100.243), 
+                              pval=c(0.037,0.95,0.91,0.93))
 kable(models.u.table, caption="Uregularized Logistic regression models",
-      col.names=c("Model type","AIC","# predictors","p-value"))
+      col.names=c("Model type","# predictors","AIC","p-value"))
 ```
 
 
@@ -408,38 +406,54 @@ kable(models.u.table, caption="Uregularized Logistic regression models",
 models.r.table <- data.frame(type=c("Backward selection","Backward + Univariate Pre-screen",
                                     "Lasso","Lasso + Univariate Pre-screen",
                                     "Ridge","Ridge + Univariate Pre-screen"),
-                           AIC=c(998.6967,1010.444,1022.898,1022.898,1042.574,1042.574), 
-                           p=c(23,14,26,24,35,32),
-                           pval=c(0.98,0.96,0,0,0,0))
+                              p=c(23,14,24,24,88,32),
+                              AIC=c(998.6967,1010.444,1031.471,1022.898,NA,1042.574), 
+                              pval=c(0.98,0.96,0,0,0,0))
 kable(models.r.table, caption="Regularized Regression models",
-      col.names=c("Model type","AIC","# predictors","p-value"))
+      col.names=c("Model type","# predictors","AIC","p-value"))
 ```
 
 
-```{r}
-errortable <- data.frame(err.full=c(94,0.2318436,0.1883966,0.8161491),
-                        err.screen=c(32,0.2150838,0.2022175,0.7911514),
-                        err.cc=c(84,0.2188082,0.1937084,0.8051683),
-                        err.cr=c(9,0.2476723,0.2446050,0.6482015),
-                        err.backward=c(23,0.2085661,0.1957969,0.8001530),
-                        err.backward.screen=c(14,0.2085661,0.1969274,0.7844234),
-                        err.lasso=c(24,0.201,0.197,0.779),
-                        err.lasso.screen=c(24,0.266,0.237,0.7598),
-                        err.ridge=c(88,0.221,0.199,0.807),
-                        err.ridge.screen=c(32,0.2495,0.253,0.7025)
-                        )
+```{r echo=FALSE}
+errortable <- data.frame(err.cr=c(9,0.248,0.245,0.648),
+                         err.screen=c(32,0.215,0.202,0.791),
+                         err.cc=c(84,0.219,0.194,0.805),
+                         err.full=c(94,0.232,0.188,0.816),
+                         err.backward=c(23,0.209,0.196,0.800),
+                         err.backward.screen=c(14,0.209,0.197,0.784),
+                         err.lasso=c(24,0.201,0.197,0.779),
+                         err.lasso.screen=c(24,0.266,0.237,0.760),
+                         err.ridge=c(88,0.221,0.199,0.807),
+                         err.ridge.screen=c(32,0.249,0.253,0.703)
+                         )
 rownames(errortable) <- c("# Predictors","Test error","Training error", "AUC")
-colnames(errortable) <- c("Full model","Univariate pre-screen","Clinical Choice",
-                    "Investigator's choice",
-                    "Backward Selection","Backward Selection + pre-screen",
-                    "Lasso","Lasso + pre-screen",
-                    "Ridge Selection","Ridge + pre-screen")
-
+colnames(errortable) <- c("Investigator's choice","Univariate pre-screen",
+                          "Clinical Choice","Full model",
+                          "Backward Selection","Backward Selection + pre-screen",
+                          "Lasso","Lasso + pre-screen",
+                          "Ridge Selection","Ridge + pre-screen")
 mat <- as.matrix(errortable)
 mat.t <- t(mat)
 kable(mat.t, caption="Models' performance - LOOCV step")
-```
 
+# 
+# library(ggplot2)
+#  
+# ggplot(testerror, aes(x=n, y=testerr)) +
+#   geom_point(size=2) + 
+#   labs(x="Number of predictors",
+#        y="Test (Prediction) error rate")+
+#   geom_text(label=testerror$mtype, check_overlap = T, nudge_x = 3, vjust=1.3)
+#   
+# 
+# ggplot(testerror, aes(x=n, y=train.err)) +
+#   geom_point(size=2, col="red") + 
+#   labs(x="Number of predictors",
+#        y="Training (Prediction) error rate")+
+#   geom_text(label=testerror$mtype, check_overlap = T, nudge_x = 3, vjust=1.3)+
+#   coord_cartesian(ylim = c(0.2, 0.27))
+
+```
 
 
 
