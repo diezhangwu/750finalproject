@@ -409,22 +409,113 @@ kable(mat.t, caption="Models' performance - LOOCV step",
 
 
 ### Penalized GLM
-Lasso regression
+lasso 
 ```{r}
 # select best lambda via LOOCV 
 set.seed(1)
-x <- model.matrix(ZSN ~., prescreen(MI.work))[, -1]
-y <- prescreen(MI.work)$ZSN
+x <- model.matrix(ZSN ~., MI.work)[, -95]
+y <- MI.work$ZSN
 cv.out.lasso <- cv.glmnet(x, y, alpha = 1, family = "binomial", nfolds = nrow(MI.work))
 plot(cv.out.lasso)
 lambda.best.lasso <- cv.out.lasso$lambda.min
 
 # fit lasso regression on the dataset
 mod.lasso <- glmnet(x, y, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
-mod.lasso$beta
+mod.lasso$beta # 24 predictors selected by lasso
 
 # Compute AIC values of lasso model
-sAIC(x = x, y = y, coef(mod.lasso), family = "binomial") # 1022.898
+sAIC(x = x, y = y, coef(mod.lasso), family = "binomial") # 1031.471
+
+# compute LOOCV prediction error rate and test error rate of Lasso regression
+lasso.test.error <- rep(0, n = 1:nrow(MI.work))
+lasso.test.pred <- rep(0, n = 1:nrow(MI.work))
+lasso.pred.error <- rep(0, n = 1:nrow(MI.work))
+lasso.auc <- rep(0, n = 1:nrow(MI.work))
+for (i in 1:nrow(MI.work)){
+  x.train <- x[-i, ]
+  y.train <- y[-i]
+  x.test <- as.matrix(x[i, ])
+  y.test <- y[i]
+  
+  mod <- glmnet(x.train, y.train, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
+  
+  lasso.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.lasso, type = "class") != y.train)
+
+  lasso.test.pred[i] <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
+  lasso.test.error[i] <- ifelse( lasso.test.pred[i] != y.test, 1, 0)
+  
+  predlasso <- prediction(predict(mod, data.matrix(x.train), type = "response"), y.train)
+  stats <- performance(predlasso, 'tpr', 'fpr')
+  
+  auc <- performance(predlasso, measure = "auc")
+  lasso.auc[i] <- auc@y.values[[1]]
+}
+mean(lasso.pred.error) # 0.197
+mean(lasso.test.error) # 0.204
+mean(lasso.auc) # 0.779
+```
+
+
+Ridge regression
+```{r}
+set.seed(1)
+cv.out.ridge <- cv.glmnet(x, y, alpha = 0, family = "binomial", nfolds = nrow(MI.work))
+plot(cv.out.ridge)
+lambda.best.ridge <- cv.out.ridge$lambda.min
+
+# fit ridge regression on the dataset
+mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binomial") # 88 predictors by ridge
+mod.ridge$beta
+
+# Compute AIC values of lasso model
+sAIC(x = x, y = y, coef(mod.ridge), family = "binomial") 
+
+# compute LOOCV test error rate of ridge regression
+ridge.pred.error <- rep(0, n = 1:nrow(MI.work))
+ridge.test.error <- rep(0, n = 1:nrow(MI.work))
+ridge.test.pred <- rep(0, n = 1:nrow(MI.work))
+ridge.auc <- rep(0, n = 1:nrow(MI.work))
+for (i in 1:nrow(MI.work)){
+  x.train <- x[-i, ]
+  y.train <- y[-i]
+  x.test <- as.matrix(x[i, ])
+  y.test <- y[i]
+  
+  mod <- glmnet(x.train, y.train, alpha = 0, lambda = lambda.best.ridge, family = "binomial")
+  
+  ridge.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.ridge, type = "class") != y.train)
+
+  ridge.test.pred[i] <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.ridge, type = "class")
+  ridge.test.error[i] <- ifelse(ridge.test.pred[i] != y.test, 1, 0)
+  
+   predridge <- prediction(predict(mod, data.matrix(x.train), type = "response"), y.train)
+   stats <- performance(predridge, 'tpr', 'fpr')
+   
+   auc <- performance(predridge, measure = "auc")
+   ridge.auc[i] <- auc@y.values[[1]]
+}
+mean(ridge.pred.error) # 0.199
+mean(ridge.test.error) # 0.221
+mean(ridge.auc) # 0.807
+```
+
+
+Lasso regression + prescreen
+```{r}
+# select best lambda via LOOCV 
+set.seed(1)
+x.s <- model.matrix(ZSN ~., prescreen(MI.work))[, -1]
+y.s <- prescreen(MI.work)$ZSN
+cv.out.lasso.s <- cv.glmnet(x.s, y.s, alpha = 1, family = "binomial", nfolds = nrow(MI.work))
+plot(cv.out.lasso.s)
+lambda.best.lasso.s <- cv.out.lasso.s$lambda.min
+
+# fit lasso regression on the dataset
+mod.lasso.s <- glmnet(x.s, y.s, alpha = 1, lambda = lambda.best.lasso.s, family = "binomial") # 24 predictors
+mod.lasso.s$beta
+
+# Compute AIC values of lasso model
+sAIC(x = x.s, y = y.s, coef(mod.lasso.s), family = "binomial") # 1022.898
 
 # compute LOOCV prediction error rate and test error rate of Lasso regression
 lasso.test.error <- rep(0, n = 1:nrow(MI.work))
@@ -462,25 +553,21 @@ for (i in 1:nrow(MI.work)){
 mean(lasso.pred.error) # 0.237
 mean(lasso.test.error) # 0.266
 mean(lasso.auc) #0.7598
-# 26 parameters selected by lasso
 ```
 
-
-
-
-Ridge regression
+Ridge regression + prescreen
 ```{r}
 set.seed(1)
-cv.out.ridge <- cv.glmnet(x, y, alpha = 0, family = "binomial", nfolds = nrow(MI.work))
-plot(cv.out.ridge)
-lambda.best.ridge <- cv.out.ridge$lambda.min
+cv.out.ridge.s <- cv.glmnet(x.s, y.s, alpha = 0, family = "binomial", nfolds = nrow(MI.work))
+plot(cv.out.ridge.s)
+lambda.best.ridge.s <- cv.out.ridge.s$lambda.min
 
 # fit ridge regression on the dataset
-mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binomial") # 35 predictors by ridge
-mod.ridge$beta
+mod.ridge.s <- glmnet(x.s, y.s, alpha = 0, lambda = lambda.best.ridge.s, family = "binomial") # 35 predictors by ridge
+mod.ridge.s$beta
 
 # Compute AIC values of lasso model
-sAIC(x = x, y = y, coef(mod.ridge), family = "binomial") # 1042.574
+sAIC(x = x.s, y = y.s, coef(mod.ridge.s), family = "binomial") # 1042.574
 
 # compute LOOCV test error rate of ridge regression
 ridge.pred.error <- rep(0, n = 1:nrow(MI.work))
@@ -515,6 +602,7 @@ mean(ridge.pred.error) # 0.253
 mean(ridge.test.error)# 0.2495
 mean(ridge.auc) # 0.7025
 ```
+
 
 ```{r}
 # compare lasso and ridge test error and training error
