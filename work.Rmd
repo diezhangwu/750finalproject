@@ -10,12 +10,13 @@ library(gridExtra)
 library(kableExtra)
 library(stepPlr)
 library(knitr)
+library(ROCR)
 ```
 
 
 
 ```{r}
-MI <- read.csv("12045261/Myocardial infarction complications Database.csv")
+MI <- read.csv("data/Myocardial infarction complications Database.csv")
 MI <- MI[,c(2:112, 121)]
 dim(MI) # 1700, 112
 
@@ -115,12 +116,28 @@ kable(summary(best.fit.b)$coef)
 
 
 
-```{r}
+```{r warning=FALSE}
 # full model
 glm.fitf <-  glm(ZSN ~., data = MI.work, family = binomial) 
 predf <- predict(glm.fitf, newdata=MI.work, type="response")
 summary(glm.fitf)$aic
 p.value=1-pchisq(deviance(glm.fitf),glm.fitf$df.residual)
+
+
+# pre-screen univariate selection
+tokeep <- c()
+  for (i in 1:94){
+    uni <- glm(ZSN~ MI.work[,i],  data=MI.work, family = binomial)
+    if(dim(summary(uni)$coef)[1]>1 & summary(uni)$coefficient[,4][2]<0.2){
+      tokeep <- c(tokeep,i)
+      print(summary(uni)$coefficient[,4][2])
+    }
+  }
+screened <- cbind(ZSN=MI.work$ZSN, data.frame(MI.work[,tokeep]))
+glm.fit.screen <- glm(ZSN~., data=screened, family=binomial)  
+predsc <- predict(glm.fit.screen, type="response")
+summary(glm.fit.screen)$aic
+p.value=1-pchisq(deviance(glm.fit.screen),glm.fit.screen$df.residual)
 
 
 # choice model - clinically driven - up to admission vars
@@ -129,26 +146,25 @@ predcc <- predict(glm.fitcc, type="response")
 summary(glm.fitcc)$aic
 p.value=1-pchisq(deviance(glm.fitcc),glm.fitcc$df.residual)
 
+
 # choice model - 743 plus additional
 glm.fitcr <-  glm(ZSN ~., data =choice, family = binomial) 
 predcr <- predict(glm.fitcr, type="response")
 summary(glm.fitcr)$aic
 p.value=1-pchisq(deviance(glm.fitcr),glm.fitcr$df.residual)
 
-# null model
-glm.fit.0 <-  glm(ZSN ~1., data = MI.work, family = binomial) 
-summary(glm.fit.0)
 
-models.table <- data.frame(type=c("Full","Clinical set choice","Our choice","Backward Selected"),
-                           AIC=c(1184.9,1184.086,1167.96,1087.05), 
-                           p=c(95,86,10,24),
-                           pval=c(0.306,0.247,0.037,0.597))
+models.table <- data.frame(type=c("Full","Clinical set choice","Our choice",
+                                  "Backward Selected","Univariate prescreen"),
+                           AIC=c(1184.9,1184.086,1167.96,1087.05,1121.105), 
+                           p=c(95,86,10,24,33),
+                           pval=c(0.306,0.247,0.037,0.59,0.373))
 kable(models.table, caption="Logistic regression models tested")
 ```
 
 
 ```{r}
-library(ROCR)
+
 predfull <- prediction(fitted(glm.fitf), MI.work$ZSN)
 stats1 <- performance(predfull, 'tpr', 'fpr')
 auc1 <- performance(predfull, measure = "auc")
@@ -201,7 +217,7 @@ for(j in 1:k){
   probt <- predict(glm.fit, type="response")
   predt <- rep(0,k)
   predt[probt>0.5]=1
-  pred.train[j] <- mean(predt == choice[-j,]$ZSN) 
+  pred.train[j] <- mean(predt!= choice[-j,]$ZSN) 
   probs.test[j] <- predict(glm.fit, newdata = choice[j,], type="response")
   pred.test[j] <- (probs.test[j]>.5)
   error.test[j] <- (pred.test[j]!=choice[j,]$ZSN)
@@ -226,10 +242,51 @@ for(j in 1:k){
   probt <- predict(glm.fit, type="response")
   predt <- rep(0,k)
   predt[probt>0.5]=1
-  pred.train[j] <- mean(predt == mi.sub[-j,]$ZSN) 
+  pred.train[j] <- mean(predt != mi.sub[-j,]$ZSN) 
   probs.test[j] <- predict(glm.fit, newdata = mi.sub[j,], type="response")
   pred.test[j] <- (probs.test[j]>.5)
   error.test[j] <- (pred.test[j]!=mi.sub[j,]$ZSN)
+}
+mean(error.test)
+```
+
+
+```{r ,warning=FALSE}
+k=nrow(MI.work)
+pred.train=rep(0,k)
+error.test=rep(0,k)
+pred=rep(0,k)
+train.error=rep(0,k)
+pred.test=rep(0,k)
+probs.test=rep(0,k)
+set.seed(1)
+
+# LOOCV for full model with univariate feature screen selection:
+
+prescreen <- function(traindata){
+  tokeep <- c()
+  for (i in 1:94){
+    uni <- glm(traindata$ZSN~traindata[,i],family = binomial)
+    if(dim(summary(uni)$coef)[1]>1 & summary(uni)$coefficient[,4][2]<0.2){
+      tokeep <- c(tokeep,i)
+    }
+  }
+  screened <- cbind(ZSN=traindata$ZSN, data.frame(traindata[,tokeep]))
+  return(screened)
+}
+
+for(j in 1:k){
+  traindata <- MI.work[-j,]
+  testdata <- MI.work[j,]
+  pres.data <- prescreen(traindata)
+  glm.fit <-  glm(ZSN ~., data = pres.data, family = binomial) 
+  probt <- predict(glm.fit, type="response")
+  predt <- rep(0,k)
+  predt[probt>0.5]=1
+  pred.train[j] <- mean(predt != testdata$ZSN) 
+  probs.test[j] <- predict(glm.fit, newdata = testdata, type="response")
+  pred.test[j] <- (probs.test[j]>.5)
+  error.test[j] <- (pred.test[j]!=testdata$ZSN)
 }
 mean(error.test)
 ```
@@ -251,7 +308,7 @@ for(j in 1:k){
   probt <- predict(glm.fit, type="response")
   predt <- rep(0,k)
   predt[probt>0.5]=1
-  pred.train[j] <- mean(predt == MI.work[-j,]$ZSN) 
+  pred.train[j] <- mean(predt != MI.work[-j,]$ZSN) 
   probs.test[j] <- predict(glm.fit, newdata = MI.work[j,], type="response")
   pred.test[j] <- (probs.test[j]>.5)
   error.test[j] <- (pred.test[j]!=MI.work[j,]$ZSN)
@@ -276,7 +333,7 @@ for(j in 1:k){
   probt <- predict(glm.fit, type="response")
   predt <- rep(0,k)
   predt[probt>0.5]=1
-  pred.train[j] <- mean(predt == backwardset[-j,]$ZSN) 
+  pred.train[j] <- mean(predt != backwardset[-j,]$ZSN) 
   probs.test[j] <- predict(glm.fit, newdata = backwardset[j,], type="response")
   pred.test[j] <- (probs.test[j]>.5)
   error.test[j] <- (pred.test[j]!=backwardset[j,]$ZSN)
@@ -284,13 +341,44 @@ for(j in 1:k){
 mean(error.test)
 ```
 
+```{r warning=FALSE}
+k=nrow(MI.work)
+pred.train=rep(0,k)
+error.test=rep(0,k)
+pred=rep(0,k)
+train.error=rep(0,k)
+pred.test=rep(0,k)
+probs.test=rep(0,k)
+set.seed(1)
+cv.error <- function(data){
+  for(j in 1:k){
+    auc.all <- c()
+    traindata <- data[-j,]
+    testdata <- data[j,]
+  glm.fit <-  glm(ZSN ~., data = traindata, family = binomial) 
+  probt <- predict(glm.fit, type="response")
+  predt <- rep(0,k)
+  predt[probt>0.5]=1
+  pred.train[j] <- mean(predt != traindata$ZSN) 
+  probs.test[j] <- predict(glm.fit, newdata = testdata, type="response")
+  pred.test[j] <- (probs.test[j]>.5)
+  error.test[j] <- (pred.test[j]!=testdata$ZSN)
+  auc <- performance(prediction(fitted(glm.fit), traindata$ZSN), measure = "auc")
+  auc.all <- c(auc.all, auc@y.values[[1]])
+  }
+  res <- return(c(mean(error.test), mean(pred.train), mean(auc.all)))
+}
+cv.error(MI.work)
+```
+
+
 ```{r}
 #prepare data for test error plot 
 testerror <- data.frame(n=c(10,17,25,86,89,95),
-                        testerr=c(0.249,0.255,0.247,0.262,0.253,0.269),
+                        testerr=c(0.249,0.255,0.247,0.262,0.253,0.269,0.2588),
                         train.err=c(0.246,0.249,0.231,0.232,0.248,0.221),
                         mtype=c("our Choice","LASSO","Backward Selection",
-                                "clinical set choice","Ridge","Full"))
+                                "clinical set choice","Ridge","Full","Univariate prescreen"))
 library(ggplot2)
  
 ggplot(testerror, aes(x=n, y=testerr)) +
