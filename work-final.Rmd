@@ -121,17 +121,13 @@ backwardset <- MI.work %>%
          fibr_ter_06,NA_R_2_n,NOT_NA_1_n,B_BLOK_S_n,TIKL_S_n,ZSN)
 
 #kable(summary(best.fit.b)$coef)
-```
-
-```{r warning=FALSE}
-# backwared selected set
 glm.fitb <-  glm(ZSN ~., data = backwardset, family = binomial) 
 predf <- predict(glm.fitb, newdata=backwardset, type="response")
 summary(glm.fitb)$aic
 # 998.6967
 p.value=1-pchisq(deviance(glm.fitb),glm.fitb$df.residual)
-# 0.9335986
 ```
+
 
 
 ```{r warning=FALSE}
@@ -150,16 +146,13 @@ backwardset.screened <- MI.work %>%
          lat_im,ritm_ecg_p_02,fibr_ter_06,TIME_B_S,NA_R_2_n,
          NOT_NA_1_n,B_BLOK_S_n,TIKL_S_n,ZSN)
 
-```
-
-```{r warning=FALSE}
-# backwared selected set with pre-screen
 glm.fitb.s <-  glm(ZSN ~., data = backwardset.screened, family = binomial) 
 predf <- predict(glm.fitb.s, newdata=backwardset.screened, type="response")
 summary(glm.fitb.s)$aic
 # 1010.444
 p.value=1-pchisq(deviance(glm.fitb.s),glm.fitb.s$df.residual)
 # 0.964
+
 ```
 
 ```{r warning=FALSE}
