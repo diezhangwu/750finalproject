@@ -266,6 +266,37 @@ auc6@y.values[[1]]
 
 mod5.lab <- expression('Backward selection')
 mod6.lab <- expression('Backward selection + Pre-screen')
+
+predlasso <- prediction(predict(mod.lasso, x, type = "response"), MI.work$ZSN)
+stats7 <- performance(predlasso, 'tpr', 'fpr')
+auc7 <- performance(predlasso, measure = "auc")
+auc7@y.values[[1]]
+
+predridge <- prediction(predict(mod.ridge, x, type = "response"), MI.work$ZSN)
+stats8 <- performance(predridge, 'tpr', 'fpr')
+auc8 <- performance(predridge, measure = "auc")
+auc8@y.values[[1]]
+
+predlasso.s <- prediction(predict(mod.lasso.s, x.s, type = "response"), MI.work$ZSN)
+stats9 <- performance(predlasso.s, 'tpr', 'fpr')
+auc9 <- performance(predlasso.s, measure = "auc")
+auc9@y.values[[1]]
+
+predridge.s <- prediction(predict(mod.ridge.s, x.s, type = "response"), MI.work$ZSN)
+stats10 <- performance(predridge.s, 'tpr', 'fpr')
+auc10 <- performance(predridge.s, measure = "auc")
+auc10@y.values[[1]]
+
+plot(stats5@x.values[[1]], stats5@y.values[[1]], type='l', 
+     ylab=stats5@y.name, xlab=stats5@x.name, col='red', lwd=1, lty=1)
+lines(stats6@x.values[[1]], stats6@y.values[[1]], type='l', col='blue')
+lines(stats7@x.values[[1]], stats7@y.values[[1]], type='l', col='green')
+lines(stats8@x.values[[1]], stats8@y.values[[1]], type='l', col='yellow')
+lines(stats9@x.values[[1]], stats9@y.values[[1]], type='l', col='orange')
+lines(stats10@x.values[[1]], stats10@y.values[[1]], type='l', col='black')
+abline(0,1, col='gray')
+legend('bottomright', c("Backward: 0.8", "Backward + Pre-screen: 0.784", "Lasso: 0.778", "Lasso + Pre-screen: 0.807", "Ridge: 0.789", "Ridge + Pre-screen: 0.789"), col=c('red','blue','green', 'yellow', 'orange', 'black'), 
+       lwd=2, lty=1, cex=.9, bty='n')
 ```
 
 ## model validation 
@@ -686,24 +717,6 @@ kable(seperate, caption = "Lasso and Ridge coefficient estimates") %>% kable_sty
 
 ```{r}
 kable(share, caption = "Lasso and Ridge coefficient estimates") %>% kable_styling(font_size = 10, full_width = F) %>% save_kable("share.pdf")
-```
-
-
-```{r}
-# ROC curve of lasso and ridge regression
-predlasso <- prediction(predict(mod.lasso, x, type = "response"), MI.work$ZSN)
-stats5 <- performance(predlasso, 'tpr', 'fpr')
-
-predridge <- prediction(predict(mod.ridge, x, type = "response"), MI.work$ZSN)
-stats6 <- performance(predridge, 'tpr', 'fpr')
-
-plot(stats5@x.values[[1]], stats5@y.values[[1]], type='s', 
-     ylab=stats5@y.name, xlab=stats5@x.name, col='red', lwd=2, lty=2)
-lines(stats6@x.values[[1]], stats6@y.values[[1]], type='s', col='blue', lwd=2, )
-#lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='green', lwd=2, )
-abline(0,1, col='gray')
-legend('bottomright', c("lasso AUC: 0.779", "ridge AUC: 0.807"), col=c('red','blue'), 
-       lwd=c(2,1), lty=c(2,1), cex=.9, bty='n')
 ```
 
 
