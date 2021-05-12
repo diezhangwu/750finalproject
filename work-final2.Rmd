@@ -316,12 +316,14 @@ cv.error <- function(data, prescreen=NULL){
 # LOOCV for the full model
 cv.error(MI.work)
 # 0.2318436 0.1883966 0.8161491
+err.full <- c(0.2318436,0.1883966,0.8161491)
 ```
 
 ```{r warning=FALSE}
 # LOOCV for full model with univariate feature screen selection:
 cv.error(MI.work, prescreen)
 # 0.2150838 0.2022175 0.7911514
+err.screen <- c(0.2150838,0.2022175,0.7911514)
 ```
 
 
@@ -329,6 +331,7 @@ cv.error(MI.work, prescreen)
 # LOOCV for the clinical choice subset
 cv.error(mi.sub)
 # 0.2188082 0.1937084 0.8051683
+err.cc <- c(0.2188082,0.1937084,0.8051683)
 ```
 
 
@@ -336,12 +339,14 @@ cv.error(mi.sub)
 # LOOCV for the backward selection subset
 cv.error(backwardset)
 # 0.2085661 0.1957969 0.8001530
+err.backward <- c(0.2085661,0.1957969,0.8001530)
 ```
 
 ```{r warning=FALSE}
 # LOOCV for the backward selection subset
 cv.error(backwardset.screened)
 # 0.2085661 0.1969274 0.7844234
+err.backward.screen <- c(0.2085661,0.1969274,0.7844234)
 ```
 
 ```{r warning=FALSE}
@@ -355,6 +360,7 @@ cv.error(backwardset.screened)
 # LOOCV for choice model
 cv.error(choice)
 # 0.2476723 0.2446050 0.6482015
+err.cr <- c(0.2476723,0.2446050,0.6482015)
 ```
 
 ```{r}
@@ -377,6 +383,29 @@ ggplot(testerror, aes(x=n, y=train.err)) +
 
 ```
 
+```{r}
+errortable <- data.frame(err.full=c(94,0.2318436,0.1883966,0.8161491),
+                        err.screen=c(32,0.2150838,0.2022175,0.7911514),
+                        err.cc=c(84,0.2188082,0.1937084,0.8051683),
+                        err.cr=c(9,0.2476723,0.2446050,0.6482015),
+                        err.backward=c(23,0.2085661,0.1957969,0.8001530),
+                        err.backward.screen=c(14,0.2085661,0.1969274,0.7844234),
+                        err.lasso=c(24,0.201,0.197,0.779),
+                        err.lasso.screen=c(24,0.266,0.237,0.7598),
+                        err.ridge=c(88,0.221,0.199,0.807),
+                        err.ridge.screen=c(32,0.2495,0.253,0.7025)
+                        )
+mat <- as.matrix(errortable)
+mat.t <- t(mat)
+kable(mat.t, caption="Models' performance - LOOCV step",
+      row.names = c(" ","Full model","Univariate pre-screen","Clinical Choice",
+                    "Investigator's choice",
+                    "Backward Selection","Backward Selection + pre-screen",
+                    "Lasso","Lasso + pre-screen",
+                    "Ridge Selection","Ridge + pre-screen"),
+      col.names = c("# Predictors","Test error","Training error", "AUC")
+      )
+```
 
 
 ### Penalized GLM
