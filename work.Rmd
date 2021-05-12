@@ -4,12 +4,16 @@ output: html_notebook
 ---
 
 ```{r}
+library(broom)
 library(dplyr)
 library(ggplot2)
+library(glmnet)
 library(gridExtra)
 library(kableExtra)
 library(stepPlr)
 library(knitr)
+library(ROCR)
+library(sAIC)
 ```
 
 
@@ -334,11 +338,16 @@ lambda.best.lasso <- cv.out.lasso$lambda.min
 
 # fit lasso regression on the dataset
 mod.lasso <- glmnet(x, y, alpha = 1, lambda = lambda.best.lasso, family = "binomial")
-mod.lasso$beta
+mod.lasso$beta # 21 parameters selected by lasso
+
+# Compute AIC values of lasso model
+sAIC(x = x, y = y, coef(mod.lasso), family = "binomial") # 1031.471
 
 # compute LOOCV prediction error rate and test error rate of Lasso regression
 lasso.test.error <- rep(0, n = 1:nrow(MI.work))
+lasso.test.pred <- rep(0, n = 1:nrow(MI.work))
 lasso.pred.error <- rep(0, n = 1:nrow(MI.work))
+lasso.auc <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
   x.train <- x[-i, ]
   y.train <- y[-i]
@@ -351,10 +360,17 @@ for (i in 1:nrow(MI.work)){
 
   lasso.test.pred[i] <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.lasso, type = "class")
   lasso.test.error[i] <- ifelse( lasso.test.pred[i] != y.test, 1, 0)
+  
+  predlasso <- prediction(predict(mod, data.matrix(x.train), type = "response"), y.train)
+  stats <- performance(predlasso, 'tpr', 'fpr')
+  
+  auc <- performance(predlasso, measure = "auc")
+  lasso.auc[i] <- auc@y.values[[1]]
 }
-mean(lasso.pred.error) # 0.249
-mean(lasso.test.error) # 0.255
-# 17 parameters selected by lasso
+mean(lasso.pred.error) # 0.197
+mean(lasso.test.error) # 0.204
+mean(lasso.auc) # 0.779
+
 ```
 
 
@@ -368,11 +384,16 @@ lambda.best.ridge <- cv.out.ridge$lambda.min
 
 # fit ridge regression on the dataset
 mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binomial")
-mod.ridge$beta
+mod.ridge$beta # 91 parameters selected
+
+# Compute AIC values of ridge model
+sAIC(x = x, y = y, coef(mod.ridge), family = "binomial") # failed due to ocmputationally singular
 
 # compute LOOCV test error rate of ridge regression
 ridge.pred.error <- rep(0, n = 1:nrow(MI.work))
 ridge.test.error <- rep(0, n = 1:nrow(MI.work))
+ridge.test.pred <- rep(0, n = 1:nrow(MI.work))
+ridge.auc <- rep(0, n = 1:nrow(MI.work))
 for (i in 1:nrow(MI.work)){
   x.train <- x[-i, ]
   y.train <- y[-i]
@@ -383,16 +404,23 @@ for (i in 1:nrow(MI.work)){
   
   ridge.pred.error[i] <- mean(predict(mod, newx = x.train, s = lambda.best.ridge, type = "class") != y.train)
 
-  ridge.test.pred <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.ridge, type = "class")
-  ridge.test.error[i] <- ifelse(ridge.test.pred != y.test, 1, 0)
+  ridge.test.pred[i] <- predict(mod, newx = t(data.matrix(x.test)), s = lambda.best.ridge, type = "class")
+  ridge.test.error[i] <- ifelse(ridge.test.pred[i] != y.test, 1, 0)
+  
+   predridge <- prediction(predict(mod, data.matrix(x.train), type = "response"), y.train)
+   stats <- performance(predridge, 'tpr', 'fpr')
+   
+   auc <- performance(predridge, measure = "auc")
+   ridge.auc[i] <- auc@y.values[[1]]
 }
-mean(ridge.pred.error) # 0.248
-mean(ridge.test.error) # 0.253
+mean(ridge.pred.error) # 0.199
+mean(ridge.test.error) # 0.221
+mean(ridge.auc) # 0.807
 ```
 
 ```{r}
 # compare lasso and ridge test error and training error
-pglm.table0 <- data.frame(Type = c("Lasso", "Ridge"), Testing_error = c("0.255", "0.253"), Training_error = c("0.249", "0.248"))
+pglm.table0 <- data.frame(Type = c("Lasso", "Ridge"), Testing_error = c("0.204", "0.221"), Training_error = c("0.197", "0.199"))
 pglm.table <- data.frame(t(pglm.table0[, 2:3]))
 colnames(pglm.table) <- pglm.table0[, 1]
 
@@ -437,20 +465,11 @@ stats6 <- performance(predridge, 'tpr', 'fpr')
 plot(stats5@x.values[[1]], stats5@y.values[[1]], type='s', 
      ylab=stats5@y.name, xlab=stats5@x.name, col='red', lwd=2, lty=2)
 lines(stats6@x.values[[1]], stats6@y.values[[1]], type='s', col='blue', lwd=2, )
-lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='green', lwd=2, )
+#lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='green', lwd=2, )
 abline(0,1, col='gray')
-legend('bottomright', c("lasso", "ridge", "backward"), col=c('red','blue','green'), 
+legend('bottomright', c("lasso AUC: 0.779", "ridge AUC: 0.807"), col=c('red','blue'), 
        lwd=c(2,1), lty=c(2,1), cex=.9, bty='n')
 ```
-
-```{r}
-auc5 <- performance(predlasso, measure = "auc")
-auc5@y.values[[1]]
-
-auc6 <- performance(predridge, measure = "auc")
-auc6@y.values[[1]]
-```
-
 
 # KNN
 ```{r}
@@ -478,9 +497,9 @@ for (j in 1:length(k)){
         pred.error[j] <- mean(pred)
 }
 
-which.min(pred.error) #27
+which.min(pred.error) #25
 knn.output <- as.data.frame(cbind(pred.error, k))
-ggplot(knn.output, aes(y = pred.error, x = k)) + geom_point() + labs(title = "KNN test error rate by number of k", x = "k", y = "LOOCV test error rate") + geom_vline(xintercept = which.min(pred.error), color = "blue", linetype = "dotted") + scale_x_continuous(breaks = c(0, 25, 27, 50)) 
+ggplot(knn.output, aes(y = pred.error, x = k)) + geom_point() + labs(title = "KNN test error rate by number of k", x = "k", y = "LOOCV test error rate") + geom_vline(xintercept = which.min(pred.error), color = "blue", linetype = "dotted") + scale_x_continuous(breaks = c(0, 25, 50)) 
 ```
 
 
@@ -499,16 +518,16 @@ for (i in 1:nrow(MI.work)){
         set.seed(1)
                 
         # compute training error rate
-        knn.train <- knn(train.x, train.x, train.ZSN, k = 27)
+        knn.train <- knn(train.x, train.x, train.ZSN, k = 25)
         knn.train.error[i] <- mean(knn.train != train.ZSN)
                 
         # compute testing error rate
-        knn.test[i] <-  knn(train.x, test.x, train.ZSN, k = 27)
+        knn.test[i] <-  knn(train.x, test.x, train.ZSN, k = 25)
         knn.test.error[i] <- ifelse(knn.test[i] != test.ZSN, 1, 0)
 }
 
-mean(knn.train.error)
-mean(knn.test.error)
+mean(knn.train.error) # 0.25
+mean(knn.test.error) # 0.75
 ```
 
 
