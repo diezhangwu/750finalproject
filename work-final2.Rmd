@@ -215,51 +215,58 @@ p.value=1-pchisq(deviance(glm.fitcr),glm.fitcr$df.residual)
 # 0.03708439
 ```
 
-## model peformance
+## model peformance - table 1
 ```{r}
 predfull <- prediction(fitted(glm.fitf), MI.work$ZSN)
 stats1 <- performance(predfull, 'tpr', 'fpr')
 auc1 <- performance(predfull, measure = "auc")
 auc1@y.values[[1]]
 
-predbackward <- prediction(fitted(glm.fitb), backwardset$ZSN)
-stats2 <- performance(predbackward, 'tpr', 'fpr')
-auc2 <- performance(predbackward, measure = "auc")
+predcc <- prediction(fitted(glm.fitcc), mi.sub$ZSN)
+stats2 <- performance(predcc, 'tpr', 'fpr')
+auc2 <- performance(predcc,  measure = "auc")
 auc2@y.values[[1]]
 
-predcc <- prediction(fitted(glm.fitcc), mi.sub$ZSN)
-stats3 <- performance(predcc, 'tpr', 'fpr')
-auc3 <- performance(predcc,  measure = "auc")
+predcr <- prediction(fitted(glm.fitcr), choice$ZSN)
+stats3 <- performance(predcr, 'tpr', 'fpr')
+auc3 <- performance(predcr, measure = "auc")
 auc3@y.values[[1]]
 
-predcr <- prediction(fitted(glm.fitcr), choice$ZSN)
-stats4 <- performance(predcr, 'tpr', 'fpr')
-auc4 <- performance(predcr, measure = "auc")
+predscreen <- prediction(fitted(glm.fit.screen), screened$ZSN)
+stats4 <- performance(predscreen, 'tpr', 'fpr')
+auc4 <- performance(predscreen, measure = "auc")
 auc4@y.values[[1]]
 
-predscreen <- prediction(fitted(glm.fit.screen), screened$ZSN)
-stats5 <- performance(predscreen, 'tpr', 'fpr')
-auc5 <- performance(predscreen, measure = "auc")
-auc5@y.values[[1]]
-
 mod1.lab <- expression('Full model')
-mod2.lab <- expression('Backward Selection')
-mod3.lab <- expression('Clinical set choice')
-mod4.lab <- expression('Our choice')
-mod5.lab <- expression('Univariate Pre-screen')
+mod2.lab <- expression('Clinical set choice')
+mod3.lab <- expression('Our choice')
+mod4.lab <- expression('Univariate Pre-screen')
 
 plot(stats1@x.values[[1]], stats1@y.values[[1]], type='s', 
      ylab=stats1@y.name, xlab=stats1@x.name, col='red', lwd=1, lty=1)
-#lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='blue')
-lines(stats3@x.values[[1]], stats3@y.values[[1]], type='s', col='green')
-lines(stats4@x.values[[1]], stats4@y.values[[1]], type='s', col='orange')
-lines(stats5@x.values[[1]], stats5@y.values[[1]], type='s', col='black')
+lines(stats2@x.values[[1]], stats2@y.values[[1]], type='s', col='green')
+lines(stats3@x.values[[1]], stats3@y.values[[1]], type='s', col='orange')
+lines(stats4@x.values[[1]], stats4@y.values[[1]], type='s', col='black')
 abline(0,1, col='gray')
-#legend('bottomright', c(mod1.lab, mod2.lab, mod3.lab, mod4.lab, mod5.lab),
-legend('bottomright', c(mod1.lab, mod3.lab, mod4.lab,mod5.lab),
-       #col=c('red','blue','green','orange','black'), 
+legend('bottomright', c(mod1.lab, mod2.lab, mod3.lab, mod4.lab),
 col=c('red','green','orange','black'), 
        lwd=1, lty=1, cex=.9, bty='n')
+```
+
+```{r}
+predbackward <- prediction(fitted(glm.fitb), backwardset$ZSN)
+stats5 <- performance(predbackward, 'tpr', 'fpr')
+auc5 <- performance(predbackward, measure = "auc")
+auc5@y.values[[1]]
+
+
+predbackward.s <- prediction(fitted(glm.fitb.s), backwardset.screened$ZSN)
+stats6 <- performance(predbackward.s, 'tpr', 'fpr')
+auc6 <- performance(predbackward.s, measure = "auc")
+auc6@y.values[[1]]
+
+mod5.lab <- expression('Backward selection')
+mod6.lab <- expression('Backward selection + Pre-screen')
 ```
 
 ## model validation 
@@ -363,6 +370,8 @@ cv.error(choice)
 err.cr <- c(0.2476723,0.2446050,0.6482015)
 ```
 
+
+
 ```{r}
 #prepare data for test error plot 
 library(ggplot2)
@@ -382,6 +391,31 @@ ggplot(testerror, aes(x=n, y=train.err)) +
   coord_cartesian(ylim = c(0.2, 0.27))
 
 ```
+
+
+```{r echo=FALSE}
+
+models.u.table <- data.frame(type=c("Investigators' choice","Univariate Pre-screen",
+                                    "Clinical set choice","Full"),
+                           AIC=c(1167.811,1036.239,1095.763,1100.243), 
+                           p=c(9,32,84,94),
+                           pval=c(0.037,0.95,0.91,0.93))
+kable(models.u.table, caption="Uregularized Logistic regression models",
+      col.names=c("Model type","AIC","# predictors","p-value"))
+```
+
+
+```{r echo=FALSE}
+models.r.table <- data.frame(type=c("Backward selection","Backward + Univariate Pre-screen",
+                                    "Lasso","Lasso + Univariate Pre-screen",
+                                    "Ridge","Ridge + Univariate Pre-screen"),
+                           AIC=c(998.6967,1010.444,1022.898,1022.898,1042.574,1042.574), 
+                           p=c(23,14,26,24,35,32),
+                           pval=c(0.98,0.96,0,0,0,0))
+kable(models.r.table, caption="Regularized Regression models",
+      col.names=c("Model type","AIC","# predictors","p-value"))
+```
+
 
 ```{r}
 errortable <- data.frame(err.full=c(94,0.2318436,0.1883966,0.8161491),
@@ -406,6 +440,8 @@ mat <- as.matrix(errortable)
 mat.t <- t(mat)
 kable(mat.t, caption="Models' performance - LOOCV step")
 ```
+
+
 
 
 ### Penalized GLM
