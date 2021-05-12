@@ -119,7 +119,6 @@ backwardset <- MI.work %>%
          ant_im,lat_im,ritm_ecg_p_02,ritm_ecg_p_04,
          n_r_ecg_p_02,n_p_ecg_p_04,n_p_ecg_p_06,fibr_ter_03,
          fibr_ter_06,NA_R_2_n,NOT_NA_1_n,B_BLOK_S_n,TIKL_S_n,ZSN)
-
 #kable(summary(best.fit.b)$coef)
 ```
 
@@ -503,7 +502,7 @@ lambda.best.ridge <- cv.out.ridge$lambda.min
 mod.ridge <- glmnet(x, y, alpha = 0, lambda = lambda.best.ridge, family = "binomial") # 88 predictors by ridge
 mod.ridge$beta
 
-# Compute AIC values of lasso model
+# Compute AIC values of ridge model
 sAIC(x = x, y = y, coef(mod.ridge), family = "binomial") 
 
 # compute LOOCV test error rate of ridge regression
@@ -753,13 +752,14 @@ mean(knn.train.error)
 mean(knn.test.error)
 ```
 
-
+# Coefficient comparision between backward and lasso
 ```{r}
-coefb <- coef(best.fit.b)
+coefb <- coef(glm.fitb)
 tab.coefb <- data.frame(list(names = names(coefb), coefs = coefb))
-colnames(tab.coefb) <- c("Coefficients", "Backward estimation")
+tab.lasso <- tidy(coef(mod.lasso))[, -2]
+colnames(tab.coefb) <- c("Coefficients", "Backward estimates")
 back.lasso.full <- full_join(tab.coefb, share, by = "Coefficients")[, -4]
-back.lasso.share <- inner_join(tab.coefb, share, by = "Coefficients")[, -4]
+kable(back.lasso.full, caption = "Table 4. Coefficient estimates form backward selection and lasso regression") %>% kable_styling(font_size = 10, full_width = F)
 ```
 
 
