@@ -235,10 +235,10 @@ stats4 <- performance(predscreen, 'tpr', 'fpr')
 auc4 <- performance(predscreen, measure = "auc")
 auc4@y.values[[1]]
 
-mod1.lab <- expression('Full model')
-mod2.lab <- expression('Clinical set choice')
-mod3.lab <- expression('Our choice')
-mod4.lab <- expression('Univariate Pre-screen')
+mod1.lab <- expression('Full model: 0.816')
+mod2.lab <- expression('Clinical set choice: 0.805')
+mod3.lab <- expression("Investigator's choice: 0.648")
+mod4.lab <- expression('Univariate Pre-screen: 0.790')
 
 plot(stats1@x.values[[1]], stats1@y.values[[1]], type='s', 
      ylab=stats1@y.name, xlab=stats1@x.name, col='red', lwd=1, lty=1)
@@ -264,6 +264,37 @@ auc6@y.values[[1]]
 
 mod5.lab <- expression('Backward selection')
 mod6.lab <- expression('Backward selection + Pre-screen')
+
+predlasso <- prediction(predict(mod.lasso, x, type = "response"), MI.work$ZSN)
+stats7 <- performance(predlasso, 'tpr', 'fpr')
+auc7 <- performance(predlasso, measure = "auc")
+auc7@y.values[[1]]
+
+predridge <- prediction(predict(mod.ridge, x, type = "response"), MI.work$ZSN)
+stats8 <- performance(predridge, 'tpr', 'fpr')
+auc8 <- performance(predridge, measure = "auc")
+auc8@y.values[[1]]
+
+predlasso.s <- prediction(predict(mod.lasso.s, x.s, type = "response"), MI.work$ZSN)
+stats9 <- performance(predlasso.s, 'tpr', 'fpr')
+auc9 <- performance(predlasso.s, measure = "auc")
+auc9@y.values[[1]]
+
+predridge.s <- prediction(predict(mod.ridge.s, x.s, type = "response"), MI.work$ZSN)
+stats10 <- performance(predridge.s, 'tpr', 'fpr')
+auc10 <- performance(predridge.s, measure = "auc")
+auc10@y.values[[1]]
+
+plot(stats5@x.values[[1]], stats5@y.values[[1]], type='l', 
+     ylab=stats5@y.name, xlab=stats5@x.name, col='red', lwd=1, lty=1)
+lines(stats6@x.values[[1]], stats6@y.values[[1]], type='l', col='blue')
+lines(stats7@x.values[[1]], stats7@y.values[[1]], type='l', col='green')
+lines(stats8@x.values[[1]], stats8@y.values[[1]], type='l', col='yellow')
+lines(stats9@x.values[[1]], stats9@y.values[[1]], type='l', col='orange')
+lines(stats10@x.values[[1]], stats10@y.values[[1]], type='l', col='black')
+abline(0,1, col='gray')
+legend('bottomright', c("Backward: 0.8", "Backward + Pre-screen: 0.784", "Lasso: 0.778", "Lasso + Pre-screen: 0.807", "Ridge: 0.789", "Ridge + Pre-screen: 0.789"), col=c('red','blue','green', 'yellow', 'orange', 'black'), 
+       lwd=2, lty=1, cex=.9, bty='n')
 ```
 
 ## model validation 
@@ -650,6 +681,7 @@ kable(share, caption = "Lasso and Ridge coefficient estimates") %>% kable_stylin
 ```
 
 
+<<<<<<< HEAD
 ```{r}
 # ROC curve of lasso and ridge regression
 predlasso <- prediction(predict(mod.lasso, x, type = "response"), MI.work$ZSN)
@@ -666,6 +698,8 @@ legend('bottomright', c("lasso AUC: 0.779", "ridge AUC: 0.807"), col=c('red','bl
 ```
 
 
+=======
+>>>>>>> 0e28528bfb1f7f67b9283c416519ededeaef78eb
 # KNN
 ```{r}
 library(class)
